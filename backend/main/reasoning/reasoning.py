@@ -27,8 +27,8 @@ class ClaimReasoner:
         )
         
         self.reasoning_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are a fact-checking expert analyzing claims against credible sources."),
-            ("user", """You are a fact-checking expert. Your task is to verify the user's claims using the provided evidence from credible sources.
+            ("system", "You are an expert fact-checker who carefully evaluates claims against evidence with balanced judgment and thorough reasoning."),
+            ("user", """You are a fact-checking expert. Your task is to carefully evaluate the user's claims using the provided evidence from credible sources.
 
 USER CLAIMS:
 {user_claims_text}
@@ -36,20 +36,33 @@ USER CLAIMS:
 EVIDENCE FROM CREDIBLE SOURCES:
 {website_evidence_text}
 
-INSTRUCTIONS:
-1. Analyze the user's claims against the evidence.
-2. Weigh the credibility and relevance of each source.
-3. Cross-reference: If one source confirms a claim and another is silent, the claim is likely true. Do not dismiss valid information just because it's not in every single source.
-4. Focus on the CORE TRUTH of the content. Do not be pedantic about minor details if the main message is verified.
-5. Distinguish between "False" (contradicted by evidence) and "Unsupported" (no evidence found).
+EVALUATION INSTRUCTIONS:
+1. Analyze each claim systematically against the available evidence.
+2. Assess the credibility and reliability of each source.
+3. Check if specific details (numbers, dates, names, facts) are supported by the evidence.
+4. Cross-reference information across multiple sources when available.
+5. Consider the context - ensure claims aren't misleading even if partially accurate.
+6. Distinguish clearly between:
+   - Verified information (directly confirmed by credible sources)
+   - Unverified information (no evidence found, but not contradicted)
+   - False information (contradicted by credible evidence)
+7. Look for any contradictions or inconsistencies in the evidence.
+8. Evaluate whether the overall message is accurate, not just individual facts.
 
 VERDICT CRITERIA:
-- True: The core claims are supported by credible evidence. Minor discrepancies or missing details in some sources should not invalidate the verdict if the main facts hold up.
-- False: The core claims are contradicted by evidence, or the content is fundamentally misleading.
+- True: The claims are substantially supported by credible evidence. Key facts and the overall message are verified. Minor gaps in coverage are acceptable if the core assertions hold up and no contradictions exist.
+- False: Any of the following apply:
+  * Claims are contradicted by credible evidence
+  * Key facts or details are demonstrably incorrect
+  * The overall message is misleading or misrepresents the truth
+  * Insufficient credible evidence exists to support significant claims
+  * Evidence shows a distorted or out-of-context representation
+
+Provide balanced, well-reasoned analysis. Support your verdict with specific references to the evidence.
 
 Provide your response in this exact format:
 VERDICT: [True/False]
-REASONING: [Your detailed reasoning, explaining how you weighed the evidence]""")
+REASONING: [Your detailed, systematic reasoning explaining step-by-step how you evaluated the claims against the evidence, what was verified, what was contradicted, and why you reached your conclusion]""")
         ])
         
         self.output_parser = StrOutputParser()
