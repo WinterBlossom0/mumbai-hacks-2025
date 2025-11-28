@@ -114,6 +114,10 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
     onMoreClick: () => void;
 }) {
     const [isHovered, setIsHovered] = useState(false);
+    const [upvotes, setUpvotes] = useState(item.upvotes || 0);
+    const [downvotes, setDownvotes] = useState(item.downvotes || 0);
+    const [userVote, setUserVote] = useState<number | null>(null);
+
     const isTrue = item.verdict;
     const isOwnPost = currentUserEmail && item.user_email === currentUserEmail;
     const showVerdict = isOwnPost || isHovered;
@@ -126,6 +130,49 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
         'from-emerald-500/10 to-green-500/10',
     ];
     const gradient = gradients[item.id.charCodeAt(0) % gradients.length];
+
+    const handleVote = async (voteType: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+
+        if (!currentUserEmail) {
+            alert('Please sign in to vote');
+            return;
+        }
+
+        try {
+            // Optimistic update
+            if (userVote === voteType) {
+                // Remove vote
+                setUserVote(null);
+                if (voteType === 1) setUpvotes(upvotes - 1);
+                else setDownvotes(downvotes - 1);
+            } else {
+                // Add or change vote
+                if (userVote === 1) setUpvotes(upvotes - 1);
+                if (userVote === -1) setDownvotes(downvotes - 1);
+
+                setUserVote(voteType);
+                if (voteType === 1) setUpvotes(upvotes + 1);
+                else setDownvotes(downvotes + 1);
+            }
+
+            // Make API call
+            await fetchAPI('/api/vote', {
+                method: 'POST',
+                body: JSON.stringify({
+                    verification_id: item.id,
+                    user_id: currentUserEmail,
+                    vote_type: voteType
+                })
+            });
+        } catch (error) {
+            console.error('Vote failed:', error);
+            // Revert on error
+            setUpvotes(item.upvotes || 0);
+            setDownvotes(item.downvotes || 0);
+            setUserVote(null);
+        }
+    };
 
     return (
         <motion.div
@@ -199,12 +246,33 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
 
                 <div className="mt-auto flex items-center justify-between text-xs text-gray-500 border-t border-white/5 pt-3">
                     <div className="flex items-center gap-4">
-                        <button className="flex items-center gap-1 hover:text-cyan-400 transition-colors" onClick={(e) => e.stopPropagation()}>
-                            <ThumbsUp className="w-3 h-3" /> {item.upvotes || 0}
-                        </button>
-                        <button className="flex items-center gap-1 hover:text-red-400 transition-colors" onClick={(e) => e.stopPropagation()}>
-                            <ThumbsDown className="w-3 h-3" /> {item.downvotes || 0}
-                        </button>
+                        {isOwnPost ? (
+                            // Show only counts for own posts
+                            <>
+                                <div className="flex items-center gap-1 text-gray-500">
+                                    <ThumbsUp className="w-3 h-3" /> {upvotes}
+                                </div>
+                                <div className="flex items-center gap-1 text-gray-500">
+                                    <ThumbsDown className="w-3 h-3" /> {downvotes}
+                                </div>
+                            </>
+                        ) : (
+                            // Show interactive buttons for others' posts
+                            <>
+                                <button
+                                    className={`flex items-center gap-1 transition-colors ${userVote === 1 ? 'text-cyan-400' : 'hover:text-cyan-400'}`}
+                                    onClick={(e) => handleVote(1, e)}
+                                >
+                                    <ThumbsUp className="w-3 h-3" /> {upvotes}
+                                </button>
+                                <button
+                                    className={`flex items-center gap-1 transition-colors ${userVote === -1 ? 'text-red-400' : 'hover:text-red-400'}`}
+                                    onClick={(e) => handleVote(-1, e)}
+                                >
+                                    <ThumbsDown className="w-3 h-3" /> {downvotes}
+                                </button>
+                            </>
+                        )}
                     </div>
                     <div className="flex items-center gap-3">
                         <button className="hover:text-white transition-colors" onClick={(e) => e.stopPropagation()}>
