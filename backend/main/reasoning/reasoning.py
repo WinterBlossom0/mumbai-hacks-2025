@@ -13,12 +13,12 @@ load_dotenv(dotenv_path=env_path)
 
 
 class ClaimReasoner:
-    def __init__(self, model: str = "gemini-2.0-flash-exp"):
+    def __init__(self, model: str = "gemini-2.5-pro"):
         """
         Initialize the ClaimReasoner using LangChain with Gemini API.
 
         Args:
-            model: The Gemini model to use (default: gemini-2.0-flash-exp)
+            model: The Gemini model to use (default: gemini-2.5-pro)
         """
         self.llm = ChatGoogleGenerativeAI(
             model=model,
@@ -27,8 +27,8 @@ class ClaimReasoner:
         )
         
         self.reasoning_prompt = ChatPromptTemplate.from_messages([
-            ("system", "You are an expert fact-checker who carefully evaluates claims against evidence with balanced judgment and thorough reasoning."),
-            ("user", """You are a fact-checking expert. Your task is to carefully evaluate the user's claims using the provided evidence from credible sources.
+            ("system", "You are a STRICT fact-checker with ZERO tolerance for numerical inaccuracies or information manipulation. Your primary duty is to catch false numbers and manipulated information."),
+            ("user", """You are a STRICT fact-checking expert. Your job is to REJECT any claims with incorrect numbers or manipulated information.
 
 USER CLAIMS:
 {user_claims_text}
@@ -36,33 +36,53 @@ USER CLAIMS:
 EVIDENCE FROM CREDIBLE SOURCES:
 {website_evidence_text}
 
-EVALUATION INSTRUCTIONS:
-1. Analyze each claim systematically against the available evidence.
-2. Assess the credibility and reliability of each source.
-3. Check if specific details (numbers, dates, names, facts) are supported by the evidence.
-4. Cross-reference information across multiple sources when available.
-5. Consider the context - ensure claims aren't misleading even if partially accurate.
-6. Distinguish clearly between:
-   - Verified information (directly confirmed by credible sources)
-   - Unverified information (no evidence found, but not contradicted)
-   - False information (contradicted by credible evidence)
-7. Look for any contradictions or inconsistencies in the evidence.
-8. Evaluate whether the overall message is accurate, not just individual facts.
+STRICT VERIFICATION PROTOCOL:
+1. **NUMBERS ARE CRITICAL**: Numbers, percentages, dates, statistics must match sources accurately.
+   - EXACT matches are preferred
+   - EXTREMELY CLOSE matches are acceptable (e.g., 50% vs 48-52%, 1000 vs 995-1005)
+   - Rounding differences within 5% tolerance are fine (47.8% ≈ 48%)
+   - Year/date precision: If source says "2024" and claim says "2024", it's TRUE even if source also mentions late 2023
+   - Vague vs specific: "around 1000" supports a claim of "1000"
+   - REJECT if difference is significant (>5% off) or clearly manipulated
 
-VERDICT CRITERIA:
-- True: The claims are substantially supported by credible evidence. Key facts and the overall message are verified. Minor gaps in coverage are acceptable if the core assertions hold up and no contradictions exist.
-- False: Any of the following apply:
-  * Claims are contradicted by credible evidence
-  * Key facts or details are demonstrably incorrect
-  * The overall message is misleading or misrepresents the truth
-  * Insufficient credible evidence exists to support significant claims
-  * Evidence shows a distorted or out-of-context representation
+2. **MANIPULATION DETECTION - BE SUSPICIOUS**:
+   - Exaggeration (making numbers bigger/smaller than they are)
+   - Cherry-picking (selecting only favorable data points)
+   - Context stripping (removing important qualifiers like "estimated", "approximately", "up to")
+   - Causation claims without evidence (X caused Y when correlation isn't proven)
+   - Misleading framing (technically true but gives wrong impression)
+   - Omitting crucial contradicting information
+   
+3. **VERIFICATION REQUIREMENTS**:
+   - Key numbers should have EXACT or EXTREMELY CLOSE matches in evidence
+   - Claims need DIRECT quotes or explicit confirmation from sources
+   - If a number appears in a claim, find that number or a very close variant (within 5%) in evidence
+   - "Approximately close" IS acceptable if within reasonable tolerance
 
-Provide balanced, well-reasoned analysis. Support your verdict with specific references to the evidence.
+4. **DEFAULT TO FALSE**:
+   - If numbers differ by >5% without explanation → FALSE
+   - If numbers are clearly manipulated or exaggerated → FALSE
+   - If context suggests manipulation → FALSE
+   - If evidence is weak or unclear → FALSE
+   - When in doubt → FALSE
+
+VERDICT RULES:
+- True: If ALL numbers are verified (exact or extremely close within 5%), NO manipulation detected, ALL facts confirmed by credible sources, and NO significant discrepancies.
+  
+- False: Mark as FALSE if ANY of these apply:
+  * Numbers differ by >5% or are clearly exaggerated
+  * ANY sign of deliberate information manipulation or misleading framing
+  * Numbers lack reasonable confirmation in evidence
+  * Important context is omitted to mislead
+  * Claims go beyond what evidence actually states
+  * Evidence contradicts any part of the claims
+  * Cannot find exact or extremely close numerical matches (within 5%)
+
+**DEFAULT STANCE: Assume FALSE unless proven TRUE with solid evidence. Be strict but fair about close numerical matches.**
 
 Provide your response in this exact format:
 VERDICT: [True/False]
-REASONING: [Your detailed, systematic reasoning explaining step-by-step how you evaluated the claims against the evidence, what was verified, what was contradicted, and why you reached your conclusion]""")
+REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote specific evidence. If ANY number is wrong or unverified, explain why it's FALSE. Be explicit about manipulation if detected.]""")
         ])
         
         self.output_parser = StrOutputParser()

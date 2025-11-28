@@ -12,12 +12,12 @@ env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 class HeadlineGenerator:
-    def __init__(self, model: str = "gemini-2.0-flash-exp"):
+    def __init__(self, model: str = "gemini-2.5-flash"):
         """
         Initialize the HeadlineGenerator using LangChain with Gemini API.
         
         Args:
-            model: The Gemini model to use (default: gemini-2.0-flash-exp)
+            model: The Gemini model to use (default: gemini-2.5-flash)
         """
         self.llm = ChatGoogleGenerativeAI(
             model=model,
