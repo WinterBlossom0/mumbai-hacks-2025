@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Link as LinkIcon, FileText, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Send, Link as LinkIcon, FileText, AlertCircle, CheckCircle, Loader2, Code } from 'lucide-react';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 
@@ -12,6 +12,7 @@ export default function VerifyPage() {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [error, setError] = useState('');
+    const [showJson, setShowJson] = useState(false);
     const { user } = useUser();
 
     const handleVerify = async () => {
@@ -147,9 +148,20 @@ export default function VerifyPage() {
                                 <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
                                     <span>🤖</span> AI Reasoning
                                 </h3>
-                                <p className="text-gray-300 leading-relaxed">
-                                    {result.reasoning}
-                                </p>
+                                <div className="space-y-4">
+                                    {result.reasoning.split('\n').map((paragraph: string, i: number) => (
+                                        paragraph.trim() && (
+                                            <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed">
+                                                {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
+                                                    if (part.startsWith('**') && part.endsWith('**')) {
+                                                        return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+                                                    }
+                                                    return part;
+                                                })}
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="glass-panel p-6">
@@ -185,6 +197,32 @@ export default function VerifyPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Raw JSON View */}
+                        <div className="glass-panel p-6">
+                            <button
+                                onClick={() => setShowJson(!showJson)}
+                                className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-cyan-400 transition-colors mb-4"
+                            >
+                                <Code className="w-4 h-4" />
+                                {showJson ? 'HIDE_RAW_DATA' : 'VIEW_RAW_DATA'}
+                            </button>
+
+                            <AnimatePresence>
+                                {showJson && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        className="overflow-hidden"
+                                    >
+                                        <pre className="text-xs font-mono text-green-400/80 overflow-x-auto p-4 bg-black/50 rounded-xl border border-white/5 custom-scrollbar">
+                                            {JSON.stringify(result, null, 2)}
+                                        </pre>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

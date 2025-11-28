@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
-import { MessageSquare, ExternalLink } from 'lucide-react';
+import { MessageSquare, ExternalLink, Code } from 'lucide-react';
 
 export default function RedditPage() {
     const [feed, setFeed] = useState<any[]>([]);
@@ -56,6 +56,7 @@ export default function RedditPage() {
 
 function RedditCard({ item, index }: { item: any, index: number }) {
     const [expanded, setExpanded] = useState(false);
+    const [showJson, setShowJson] = useState(false);
 
     return (
         <motion.div
@@ -94,7 +95,20 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                     <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
                                         <span>🤖</span> AI Analysis
                                     </h4>
-                                    <p className="text-gray-400 text-sm leading-relaxed">{item.reasoning}</p>
+                                    <div className="space-y-3">
+                                        {item.reasoning.split('\n').map((paragraph: string, i: number) => (
+                                            paragraph.trim() && (
+                                                <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed">
+                                                    {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
+                                                        if (part.startsWith('**') && part.endsWith('**')) {
+                                                            return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+                                                        }
+                                                        return part;
+                                                    })}
+                                                </div>
+                                            )
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <div>
@@ -155,6 +169,35 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                         View Original Source
                                     </a>
                                 )}
+
+                                {/* Raw JSON View */}
+                                <div>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowJson(!showJson);
+                                        }}
+                                        className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-cyan-400 transition-colors mb-4"
+                                    >
+                                        <Code className="w-3 h-3" />
+                                        {showJson ? 'HIDE_RAW_DATA' : 'VIEW_RAW_DATA'}
+                                    </button>
+
+                                    <AnimatePresence>
+                                        {showJson && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: 'auto', opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="overflow-hidden"
+                                            >
+                                                <pre className="text-xs font-mono text-green-400/80 overflow-x-auto p-4 bg-black/50 rounded-xl border border-white/5 custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+                                                    {JSON.stringify(item, null, 2)}
+                                                </pre>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </div>
                             </div>
                         </motion.div>
                     )}

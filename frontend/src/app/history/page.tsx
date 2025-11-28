@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
-import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Lock, Globe } from 'lucide-react';
+import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Lock, Globe, Code } from 'lucide-react';
 
 export default function HistoryPage() {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -89,6 +89,7 @@ export default function HistoryPage() {
 
 function HistoryItem({ item, index, onTogglePublic }: { item: any, index: number, onTogglePublic: () => void }) {
     const [expanded, setExpanded] = useState(false);
+    const [showJson, setShowJson] = useState(false);
     const isTrue = item.verdict;
 
     return (
@@ -139,7 +140,20 @@ function HistoryItem({ item, index, onTogglePublic }: { item: any, index: number
                         <div className="pt-6 mt-6 border-t border-white/10 space-y-4">
                             <div>
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">AI Analysis</h4>
-                                <p className="text-gray-300 text-sm leading-relaxed">{item.reasoning}</p>
+                                <div className="space-y-3">
+                                    {item.reasoning.split('\n').map((paragraph: string, i: number) => (
+                                        paragraph.trim() && (
+                                            <div key={i} className="bg-white/5 p-3 rounded-lg border border-white/5 text-gray-300 text-sm leading-relaxed">
+                                                {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
+                                                    if (part.startsWith('**') && part.endsWith('**')) {
+                                                        return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+                                                    }
+                                                    return part;
+                                                })}
+                                            </div>
+                                        )
+                                    ))}
+                                </div>
                             </div>
                             <div>
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">Key Claims</h4>
@@ -182,10 +196,40 @@ function HistoryItem({ item, index, onTogglePublic }: { item: any, index: number
                                     </div>
                                 </div>
                             )}
+
+                            {/* Raw JSON View */}
+                            <div>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowJson(!showJson);
+                                    }}
+                                    className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-cyan-400 transition-colors mb-4"
+                                >
+                                    <Code className="w-3 h-3" />
+                                    {showJson ? 'HIDE_RAW_DATA' : 'VIEW_RAW_DATA'}
+                                </button>
+
+                                <AnimatePresence>
+                                    {showJson && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: 'auto', opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <pre className="text-xs font-mono text-green-400/80 overflow-x-auto p-4 bg-black/50 rounded-xl border border-white/5 custom-scrollbar" onClick={(e) => e.stopPropagation()}>
+                                                {JSON.stringify(item, null, 2)}
+                                            </pre>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
                         </div>
                     </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
+                )
+                }
+            </AnimatePresence >
+        </motion.div >
     );
 }

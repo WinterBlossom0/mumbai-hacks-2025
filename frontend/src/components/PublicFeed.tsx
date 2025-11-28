@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
-import { ChevronRight, ThumbsUp, ThumbsDown, AlertCircle, CheckCircle, Eye, Share2, X } from 'lucide-react';
+import { ChevronRight, ThumbsUp, ThumbsDown, AlertCircle, CheckCircle, Eye, Share2, X, Code } from 'lucide-react';
 
 interface FeedItem {
     id: string;
@@ -214,6 +214,8 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
 }
 
 function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
+    const [showJson, setShowJson] = useState(false);
+
     // Lock body scroll when modal is open
     useEffect(() => {
         document.body.style.overflow = 'hidden';
@@ -268,9 +270,20 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
                         <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
                             <span>🤖</span> AI Analysis
                         </h3>
-                        <p className="text-gray-300 leading-relaxed text-base md:text-lg">
-                            {item.reasoning}
-                        </p>
+                        <div className="space-y-4">
+                            {item.reasoning.split('\n').map((paragraph, i) => (
+                                paragraph.trim() && (
+                                    <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed">
+                                        {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
+                                            if (part.startsWith('**') && part.endsWith('**')) {
+                                                return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+                                            }
+                                            return part;
+                                        })}
+                                    </div>
+                                )
+                            ))}
+                        </div>
                     </div>
 
                     <div>
@@ -317,6 +330,32 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
                             </div>
                         </div>
                     )}
+
+                    {/* Raw JSON View */}
+                    <div>
+                        <button
+                            onClick={() => setShowJson(!showJson)}
+                            className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-cyan-400 transition-colors mb-4"
+                        >
+                            <Code className="w-4 h-4" />
+                            {showJson ? 'HIDE_RAW_DATA' : 'VIEW_RAW_DATA'}
+                        </button>
+
+                        <AnimatePresence>
+                            {showJson && (
+                                <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: 'auto', opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    className="overflow-hidden"
+                                >
+                                    <pre className="text-xs font-mono text-green-400/80 overflow-x-auto p-4 bg-black/50 rounded-xl border border-white/5 custom-scrollbar">
+                                        {JSON.stringify(item, null, 2)}
+                                    </pre>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
 
                 {/* Footer - Fixed */}
