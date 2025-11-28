@@ -20,6 +20,7 @@ interface FeedItem {
     headline?: string;
     upvotes: number;
     downvotes: number;
+    image_url?: string;
 }
 
 export default function PublicFeed({ category }: { category: string }) {
@@ -162,6 +163,12 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
                     </h3>
                 )}
 
+                {item.image_url && (
+                    <div className="w-full h-40 mb-4 rounded-lg overflow-hidden relative border border-white/10">
+                        <img src={item.image_url} alt="Verification context" className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500" />
+                    </div>
+                )}
+
                 {/* Verdict Badge */}
                 <div className="mb-4">
                     <motion.div
@@ -266,6 +273,12 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
 
                 {/* Scrollable Content */}
                 <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                    {item.image_url && (
+                        <div className="w-full h-64 rounded-xl overflow-hidden relative border border-white/10 shadow-lg shadow-cyan-500/10">
+                            <img src={item.image_url} alt="Verification context" className="w-full h-full object-cover" />
+                        </div>
+                    )}
+
                     <div className="bg-white/5 rounded-xl p-6 border border-white/10">
                         <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
                             <span>🤖</span> AI Analysis

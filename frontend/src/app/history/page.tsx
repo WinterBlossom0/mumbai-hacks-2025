@@ -138,6 +138,11 @@ function HistoryItem({ item, index, onTogglePublic }: { item: any, index: number
                         className="overflow-hidden"
                     >
                         <div className="pt-6 mt-6 border-t border-white/10 space-y-4">
+                            {item.image_url && (
+                                <div className="w-full h-48 rounded-lg overflow-hidden relative border border-white/10 shadow-lg shadow-cyan-500/10">
+                                    <img src={item.image_url} alt="Verification context" className="w-full h-full object-cover" />
+                                </div>
+                            )}
                             <div>
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">AI Analysis</h4>
                                 <div className="space-y-3">

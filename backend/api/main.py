@@ -79,6 +79,7 @@ class HistoryResponse(BaseModel):
     downvotes: int = 0
     headline: Optional[str] = None
     category: Optional[str] = None
+    image_url: Optional[str] = None
 
 
 class RedditPost(BaseModel):
@@ -256,9 +257,10 @@ async def toggle_public_status(verification_id: str, is_public: bool):
         db = SupabaseClient()
         headline = None
         category = None
+        image_url = None
         
         if is_public:
-            # Check if we need to generate a headline and category
+            # Check if we need to generate a headline, category, or image
             verification = db.get_verification_by_id(verification_id)
             if verification:
                 claims = verification.get("claims", [])
@@ -281,18 +283,37 @@ async def toggle_public_status(verification_id: str, is_public: bool):
                     headline = verification.get("headline")
                 
                 # Generate category from claims
-                if claims:
-                    print(f"Categorizing claims for {verification_id}...")
-                    try:
-                        categorizer = ClaimCategorizer()
-                        category = categorizer.categorize_claims(claims)
-                        print(f"Category: {category}")
-                    except Exception as e:
-                        print(f"Error categorizing claims: {e}")
-                        category = "technology"  # Default fallback
+                if not verification.get("category"):
+                    if claims:
+                        print(f"Categorizing claims for {verification_id}...")
+                        try:
+                            categorizer = ClaimCategorizer()
+                            category = categorizer.categorize_claims(claims)
+                            print(f"Category: {category}")
+                        except Exception as e:
+                            print(f"Error categorizing claims: {e}")
+                            category = "technology"  # Default fallback
+                else:
+                    category = verification.get("category")
 
-        result = db.toggle_public_status(verification_id, is_public, headline, category)
-        return {"success": result, "headline": headline, "category": category}
+                # Generate image if missing
+                if not verification.get("image_url"):
+                    print(f"Searching for image for {verification_id}...")
+                    try:
+                        searcher = ImageSearcher()
+                        if claims:
+                            image_url = searcher.get_image_for_claims(claims)
+                        elif verification.get("input_content"):
+                             image_url = searcher.search_image(verification.get("input_content")[:200])
+                        
+                        print(f"Found image: {image_url}")
+                    except Exception as e:
+                        print(f"Error searching for image: {e}")
+                else:
+                    image_url = verification.get("image_url")
+
+        result = db.toggle_public_status(verification_id, is_public, headline, category, image_url)
+        return {"success": result, "headline": headline, "category": category, "image_url": image_url}
     except Exception as e:
         print(f"Error toggling public status: {e}")
         raise HTTPException(status_code=500, detail=str(e))
