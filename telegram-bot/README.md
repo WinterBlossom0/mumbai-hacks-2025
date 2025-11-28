@@ -2,6 +2,9 @@
 
 AI-powered fact verification bot for Telegram with automatic announcement service.
 
+**Last Updated:** 2025-11-29 - Fixed announcement service methods
+
+
 ## 🚀 Quick Start
 
 ### Prerequisites
