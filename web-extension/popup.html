@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Truth Lens</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
+                </svg>
+                <h1>Truth Lens</h1>
+            </div>
+            <button id="settingsBtn" class="icon-btn" title="Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" fill="currentColor"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="mainContent">
+            <!-- Initial State -->
+            <div id="initialState" class="state-view">
+                <div class="illustration">
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V7.3l7-3.11v8.8z" fill="url(#gradient)" opacity="0.8"/>
+                        <defs>
+                            <linearGradient id="gradient" x1="2" y1="2" x2="22" y2="22">
+                                <stop offset="0%" stop-color="#667eea"/>
+                                <stop offset="100%" stop-color="#764ba2"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <h2>Verify This Page</h2>
+                <p>Click the button below to check if the content on this page contains misinformation.</p>
+                <button id="checkBtn" class="primary-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/>
+                    </svg>
+                    Check This Page
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="state-view hidden">
+                <div class="loader"></div>
+                <h2>Analyzing Content...</h2>
+                <p id="loadingMessage">Extracting claims from the page</p>
+                <div class="progress-steps">
+                    <div class="step active">
+                        <div class="step-dot"></div>
+                        <span>Extract Claims</span>
+                    </div>
+                    <div class="step">
+                        <div class="step-dot"></div>
+                        <span>Find Sources</span>
+                    </div>
+                    <div class="step">
+                        <div class="step-dot"></div>
+                        <span>Verify Facts</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results State -->
+            <div id="resultsState" class="state-view hidden">
+                <div id="verdictBadge" class="verdict-badge"></div>
+                
+                <div class="result-section">
+                    <h3>Analysis</h3>
+                    <p id="reasoning" class="reasoning-text"></p>
+                </div>
+
+                <div class="result-section">
+                    <h3>Key Claims</h3>
+                    <ul id="claimsList" class="claims-list"></ul>
+                </div>
+
+                <div class="result-section">
+                    <h3>Sources</h3>
+                    <div id="sourcesList" class="sources-list"></div>
+                </div>
+
+                <button id="checkAgainBtn" class="secondary-btn">Check Another Page</button>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="state-view hidden">
+                <div class="error-icon">⚠️</div>
+                <h2>Something Went Wrong</h2>
+                <p id="errorMessage" class="error-text"></p>
+                <button id="retryBtn" class="primary-btn">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="utils.js"></script>
+    <script src="api.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>
