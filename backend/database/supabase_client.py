@@ -321,3 +321,111 @@ class SupabaseClient:
             self.client.table("reddit_posts").update({"is_removed": True}).eq("reddit_id", reddit_id).execute()
         except Exception as e:
             print(f"Error marking Reddit post as removed: {e}")
+
+    # Announcement tracking methods for Telegram bot
+    def get_unannounced_fake_news(self, channel_id: str, limit: int = 5) -> List[Dict]:
+        """
+        Get unannounced fake news verifications for Telegram announcements.
+        
+        Args:
+            channel_id: Telegram channel ID
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of unannounced fake news verifications
+        """
+        try:
+            result = (
+                self.client.table("verifications")
+                .select("*")
+                .eq("verdict", False)  # Only FALSE verdicts (fake news)
+                .is_("announced_to_telegram", "null")  # Not yet announced
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching unannounced fake news: {e}")
+            return []
+
+    def get_unannounced_reddit_fake_news(self, channel_id: str, limit: int = 5) -> List[Dict]:
+        """
+        Get unannounced fake Reddit posts for Telegram announcements.
+        
+        Args:
+            channel_id: Telegram channel ID
+            limit: Maximum number of records to return
+            
+        Returns:
+            List of unannounced fake Reddit posts
+        """
+        try:
+            result = (
+                self.client.table("reddit_posts")
+                .select("*")
+                .eq("verdict", False)  # Only FALSE verdicts (fake news)
+                .eq("is_removed", False)  # Not removed
+                .is_("announced_to_telegram", "null")  # Not yet announced
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching unannounced Reddit fake news: {e}")
+            return []
+
+    def mark_as_announced(self, verification_id: str, channel_id: str) -> bool:
+        """
+        Mark a verification as announced to Telegram.
+        
+        Args:
+            verification_id: Verification record ID
+            channel_id: Telegram channel ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = (
+                self.client.table("verifications")
+                .update({
+                    "announced_to_telegram": True,
+                    "telegram_channel_id": channel_id,
+                    "announced_at": datetime.utcnow().isoformat()
+                })
+                .eq("id", verification_id)
+                .execute()
+            )
+            return len(result.data) > 0
+        except Exception as e:
+            print(f"Error marking verification as announced: {e}")
+            return False
+
+    def mark_reddit_post_as_announced(self, post_id: str, channel_id: str) -> bool:
+        """
+        Mark a Reddit post as announced to Telegram.
+        
+        Args:
+            post_id: Reddit post record ID
+            channel_id: Telegram channel ID
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            result = (
+                self.client.table("reddit_posts")
+                .update({
+                    "announced_to_telegram": True,
+                    "telegram_channel_id": channel_id,
+                    "announced_at": datetime.utcnow().isoformat()
+                })
+                .eq("id", post_id)
+                .execute()
+            )
+            return len(result.data) > 0
+        except Exception as e:
+            print(f"Error marking Reddit post as announced: {e}")
+            return False
