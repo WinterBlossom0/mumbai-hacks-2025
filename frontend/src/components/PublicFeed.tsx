@@ -247,13 +247,13 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
                 <div className="mt-auto flex items-center justify-between text-xs text-gray-500 border-t border-white/5 pt-3">
                     <div className="flex items-center gap-4">
                         {isOwnPost ? (
-                            // Show only counts for own posts
+                            // Show only numeric counts for own posts
                             <>
-                                <div className="flex items-center gap-1 text-gray-500">
-                                    <ThumbsUp className="w-3 h-3" /> {upvotes}
+                                <div className="text-gray-400">
+                                    <span className="text-cyan-400 font-semibold">{upvotes}</span> upvotes
                                 </div>
-                                <div className="flex items-center gap-1 text-gray-500">
-                                    <ThumbsDown className="w-3 h-3" /> {downvotes}
+                                <div className="text-gray-400">
+                                    <span className="text-red-400 font-semibold">{downvotes}</span> downvotes
                                 </div>
                             </>
                         ) : (
