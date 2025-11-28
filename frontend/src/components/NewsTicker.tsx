@@ -44,18 +44,30 @@ export default function NewsTicker({ onArticleClick }: { onArticleClick: (item: 
     if (chunk2.length === 0 && headlines.length > 0) chunk2 = headlines;
     if (chunk3.length === 0 && headlines.length > 0) chunk3 = headlines;
 
+    const colors = [
+        'bg-cyan-500 shadow-cyan-500/50',
+        'bg-purple-500 shadow-purple-500/50',
+        'bg-rose-500 shadow-rose-500/50',
+        'bg-amber-500 shadow-amber-500/50',
+        'bg-emerald-500 shadow-emerald-500/50',
+    ];
+
     const renderBand = (items: NewsItem[], direction: 'left' | 'right') => (
         <div className={`ticker-band ${direction}`}>
             {/* Repeat items multiple times to ensure seamless scrolling */}
-            {[...items, ...items, ...items, ...items, ...items, ...items].map((item, i) => (
-                <div
-                    key={`${item.id}-${i}`}
-                    className="ticker-item"
-                    onClick={() => onArticleClick(item)}
-                >
-                    <span>🔥</span> {item.headline || item.input_content.substring(0, 50) + '...'}
-                </div>
-            ))}
+            {[...items, ...items, ...items, ...items, ...items, ...items].map((item, i) => {
+                const colorClass = colors[i % colors.length];
+                return (
+                    <div
+                        key={`${item.id}-${i}`}
+                        className="ticker-item"
+                        onClick={() => onArticleClick(item)}
+                    >
+                        <span className={`w-3 h-3 rounded-full mr-4 shrink-0 shadow-[0_0_15px] ${colorClass}`} />
+                        {item.headline || item.input_content.substring(0, 50) + '...'}
+                    </div>
+                );
+            })}
         </div>
     );
 
