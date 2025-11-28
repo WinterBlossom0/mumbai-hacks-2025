@@ -72,6 +72,7 @@ class HistoryResponse(BaseModel):
     verdict: bool
     reasoning: str
     claims: List[str]
+    sources: Optional[Dict[str, List[str]]] = None
     is_public: bool
     created_at: str
     upvotes: int = 0

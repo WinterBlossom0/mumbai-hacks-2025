@@ -46,7 +46,7 @@ def start_backend():
     )
     
     # Start thread to print backend output
-    thread = threading.Thread(target=print_output, args=(backend_process, "BACKEND"))
+    thread = threading.Thread(target=print_output, args=(backend_process, "BACKEND"), daemon=True)
     thread.start()
     output_threads.append(thread)
     
@@ -70,7 +70,7 @@ def start_frontend():
     )
     
     # Start thread to print frontend output
-    thread = threading.Thread(target=print_output, args=(frontend_process, "FRONTEND"))
+    thread = threading.Thread(target=print_output, args=(frontend_process, "FRONTEND"), daemon=True)
     thread.start()
     output_threads.append(thread)
     
@@ -97,7 +97,7 @@ def start_reddit_monitor():
     )
     
     # Start thread to print monitor output
-    thread = threading.Thread(target=print_output, args=(monitor_process, "REDDIT"))
+    thread = threading.Thread(target=print_output, args=(monitor_process, "REDDIT"), daemon=True)
     thread.start()
     output_threads.append(thread)
     

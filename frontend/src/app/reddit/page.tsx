@@ -111,6 +111,38 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                     </ul>
                                 </div>
 
+                                {/* Sources Section */}
+                                {item.sources && Object.keys(item.sources).length > 0 && (
+                                    <div>
+                                        <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
+                                            <span>🔗</span> Sources
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {Object.entries(item.sources).map(([source, urls]: [string, any], i) => (
+                                                <div key={i} className="bg-white/5 rounded-lg p-3 border border-white/5">
+                                                    <h5 className="text-xs font-semibold text-gray-300 mb-1 capitalize">{source}</h5>
+                                                    <ul className="space-y-1">
+                                                        {Array.isArray(urls) && urls.map((url: string, j: number) => (
+                                                            <li key={j}>
+                                                                <a
+                                                                    href={url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline break-all flex items-center gap-2"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    <span className="w-1 h-1 rounded-full bg-cyan-500/50 shrink-0" />
+                                                                    {url}
+                                                                </a>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {item.url && (
                                     <a
                                         href={item.url}

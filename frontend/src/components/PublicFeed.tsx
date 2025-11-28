@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
-import { ChevronDown, ChevronUp, ThumbsUp, ThumbsDown, AlertCircle, CheckCircle, Eye, Share2 } from 'lucide-react';
+import { ChevronRight, ThumbsUp, ThumbsDown, AlertCircle, CheckCircle, Eye, Share2, X } from 'lucide-react';
 
 interface FeedItem {
     id: string;
@@ -12,6 +13,7 @@ interface FeedItem {
     verdict: boolean;
     reasoning: string;
     claims: string[];
+    sources?: Record<string, string[]>;
     user_email: string;
     created_at: string;
     category: string;
@@ -24,7 +26,7 @@ export default function PublicFeed({ category }: { category: string }) {
     const [feed, setFeed] = useState<FeedItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [selectedItem, setSelectedItem] = useState<FeedItem | null>(null);
     const { user } = useUser();
 
     useEffect(() => {
@@ -48,45 +50,72 @@ export default function PublicFeed({ category }: { category: string }) {
         }
     }
 
-    const handleToggle = (id: string) => {
-        setExpandedId(expandedId === id ? null : id);
-    };
-
-    if (loading) return <div className="text-center py-20 text-cyan-400 animate-pulse">Loading feed...</div>;
     if (error) return <div className="text-center py-20 text-red-400">{error}</div>;
-    if (feed.length === 0) return <div className="text-center py-20 text-gray-500">No verifications found</div>;
 
     return (
         <div className="max-w-[1600px] mx-auto">
-            <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-                <AnimatePresence mode='popLayout'>
-                    {feed.map((item, index) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {loading ? (
+                    // Skeleton Loading State
+                    Array.from({ length: 6 }).map((_, i) => (
+                        <FeedSkeleton key={i} />
+                    ))
+                ) : feed.length === 0 ? (
+                    <div className="col-span-full text-center py-20 text-gray-500">No verifications found</div>
+                ) : (
+                    feed.map((item, index) => (
                         <FeedCard
                             key={item.id}
                             item={item}
                             index={index}
                             currentUserEmail={user?.primaryEmailAddress?.emailAddress}
-                            isExpanded={expandedId === item.id}
-                            onToggle={() => handleToggle(item.id)}
+                            onMoreClick={() => setSelectedItem(item)}
                         />
-                    ))}
-                </AnimatePresence>
+                    ))
+                )}
+            </div>
+
+            <AnimatePresence>
+                {selectedItem && (
+                    <FeedModal item={selectedItem} onClose={() => setSelectedItem(null)} />
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+function FeedSkeleton() {
+    return (
+        <div className="glass-panel p-6 h-[350px] flex flex-col animate-pulse border border-white/5">
+            <div className="flex justify-between mb-6">
+                <div className="h-4 bg-white/10 rounded w-24"></div>
+                <div className="h-4 bg-white/10 rounded w-20"></div>
+            </div>
+            <div className="h-8 bg-white/10 rounded w-3/4 mb-4"></div>
+            <div className="h-6 bg-white/5 rounded w-1/3 mb-6"></div>
+            <div className="space-y-3 flex-grow">
+                <div className="h-3 bg-white/5 rounded w-full"></div>
+                <div className="h-3 bg-white/5 rounded w-full"></div>
+                <div className="h-3 bg-white/5 rounded w-2/3"></div>
+            </div>
+            <div className="flex justify-between mt-6 pt-4 border-t border-white/5">
+                <div className="h-4 bg-white/10 rounded w-16"></div>
+                <div className="h-4 bg-white/10 rounded w-16"></div>
             </div>
         </div>
     );
 }
 
-function FeedCard({ item, index, currentUserEmail, isExpanded, onToggle }: {
+function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
     item: FeedItem;
     index: number;
     currentUserEmail?: string;
-    isExpanded: boolean;
-    onToggle: () => void;
+    onMoreClick: () => void;
 }) {
     const [isHovered, setIsHovered] = useState(false);
     const isTrue = item.verdict;
     const isOwnPost = currentUserEmail && item.user_email === currentUserEmail;
-    const showVerdict = isOwnPost || isExpanded || isHovered;
+    const showVerdict = isOwnPost || isHovered;
 
     // Random gradient for visual variety based on ID
     const gradients = [
@@ -102,16 +131,16 @@ function FeedCard({ item, index, currentUserEmail, isExpanded, onToggle }: {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className={`glass-panel group relative p-6 cursor-hover transition-all duration-500 break-inside-avoid mb-6 hover:shadow-[0_0_30px_rgba(0,242,255,0.2)] overflow-hidden`}
+            className={`glass-panel group relative p-6 cursor-hover transition-all duration-500 flex flex-col h-full hover:shadow-[0_0_30px_rgba(0,242,255,0.2)] overflow-hidden`}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            onClick={onToggle}
+            onClick={onMoreClick}
         >
             {/* Dynamic Background Gradient */}
             <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
 
             {/* Content Wrapper */}
-            <div className="relative z-10">
+            <div className="relative z-10 flex flex-col h-full">
                 <div className="flex items-start justify-between gap-4 mb-4">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
@@ -157,64 +186,155 @@ function FeedCard({ item, index, currentUserEmail, isExpanded, onToggle }: {
                     </motion.div>
                 </div>
 
-                <div className={`text-gray-400 text-sm leading-relaxed ${!isExpanded ? 'line-clamp-3' : ''}`}>
+                <div className="text-gray-400 text-sm leading-relaxed line-clamp-3 mb-4 flex-grow">
                     {item.input_content}
                 </div>
 
-                <AnimatePresence>
-                    {isExpanded && (
-                        <motion.div
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden"
-                        >
-                            <div className="pt-4 mt-4 border-t border-white/10 space-y-4">
-                                <div className="bg-black/20 rounded-lg p-3 border border-white/5">
-                                    <h4 className="text-cyan-400 text-xs font-bold uppercase mb-2 flex items-center gap-2">
-                                        <span>🤖</span> AI Analysis
-                                    </h4>
-                                    <p className="text-gray-300 text-sm leading-relaxed">{item.reasoning}</p>
-                                </div>
-
-                                <div>
-                                    <h4 className="text-cyan-400 text-xs font-bold uppercase mb-2 flex items-center gap-2">
-                                        <span>📌</span> Key Claims
-                                    </h4>
-                                    <ul className="space-y-2">
-                                        {item.claims.map((claim, i) => (
-                                            <li key={i} className="text-gray-400 text-xs flex items-start gap-2">
-                                                <span className="mt-1 w-1 h-1 rounded-full bg-cyan-500/50 shrink-0" />
-                                                {claim}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                <div className="mt-4 flex items-center justify-between text-xs text-gray-500 border-t border-white/5 pt-3">
+                <div className="mt-auto flex items-center justify-between text-xs text-gray-500 border-t border-white/5 pt-3">
                     <div className="flex items-center gap-4">
-                        <button className="flex items-center gap-1 hover:text-cyan-400 transition-colors">
+                        <button className="flex items-center gap-1 hover:text-cyan-400 transition-colors" onClick={(e) => e.stopPropagation()}>
                             <ThumbsUp className="w-3 h-3" /> {item.upvotes || 0}
                         </button>
-                        <button className="flex items-center gap-1 hover:text-red-400 transition-colors">
+                        <button className="flex items-center gap-1 hover:text-red-400 transition-colors" onClick={(e) => e.stopPropagation()}>
                             <ThumbsDown className="w-3 h-3" /> {item.downvotes || 0}
                         </button>
                     </div>
                     <div className="flex items-center gap-3">
-                        <button className="hover:text-white transition-colors">
+                        <button className="hover:text-white transition-colors" onClick={(e) => e.stopPropagation()}>
                             <Share2 className="w-3 h-3" />
                         </button>
                         <button className="flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
-                            {isExpanded ? 'LESS' : 'MORE'}
-                            {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                            MORE <ChevronRight className="w-3 h-3" />
                         </button>
                     </div>
                 </div>
             </div>
         </motion.div>
+    );
+}
+
+function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
+    // Lock body scroll when modal is open
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
+    // Use Portal to render at document body level for perfect centering
+    if (typeof window === 'undefined') return null;
+
+    return createPortal(
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="relative w-full max-w-3xl glass-panel p-0 max-h-[85vh] flex flex-col border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header - Fixed */}
+                <div className="p-6 border-b border-white/10 flex items-start justify-between gap-4 bg-black/20 backdrop-blur-md sticky top-0 z-10">
+                    <div>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${item.verdict ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                }`}>
+                                {item.verdict ? 'Verified True' : 'Verified False'}
+                            </div>
+                            <span className="text-gray-500 text-sm">{new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <h2 className="text-xl md:text-2xl font-bold text-white leading-tight line-clamp-2">
+                            {item.headline || item.input_content}
+                        </h2>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 text-gray-400 hover:text-white transition-colors rounded-full hover:bg-white/10 shrink-0"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                    <div className="bg-white/5 rounded-xl p-6 border border-white/10">
+                        <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
+                            <span>🤖</span> AI Analysis
+                        </h3>
+                        <p className="text-gray-300 leading-relaxed text-base md:text-lg">
+                            {item.reasoning}
+                        </p>
+                    </div>
+
+                    <div>
+                        <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
+                            <span>📌</span> Key Claims
+                        </h3>
+                        <ul className="space-y-3">
+                            {item.claims.map((claim, i) => (
+                                <li key={i} className="flex items-start gap-3 text-gray-300 bg-black/20 p-4 rounded-lg border border-white/5">
+                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
+                                    {claim}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Sources Section */}
+                    {item.sources && Object.keys(item.sources).length > 0 && (
+                        <div>
+                            <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
+                                <span>🔗</span> Sources
+                            </h3>
+                            <div className="space-y-4">
+                                {Object.entries(item.sources).map(([source, urls], i) => (
+                                    <div key={i} className="bg-black/20 rounded-lg p-4 border border-white/5">
+                                        <h4 className="text-sm font-semibold text-gray-300 mb-2 capitalize">{source}</h4>
+                                        <ul className="space-y-2">
+                                            {urls.map((url, j) => (
+                                                <li key={j}>
+                                                    <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline break-all flex items-center gap-2"
+                                                    >
+                                                        <span className="w-1 h-1 rounded-full bg-cyan-500/50 shrink-0" />
+                                                        {url}
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer - Fixed */}
+                <div className="p-6 border-t border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-md">
+                    <div className="flex items-center gap-6">
+                        <button className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors">
+                            <ThumbsUp className="w-5 h-5" /> {item.upvotes || 0}
+                        </button>
+                        <button className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors">
+                            <ThumbsDown className="w-5 h-5" /> {item.downvotes || 0}
+                        </button>
+                    </div>
+                    <button className="flex items-center gap-2 text-cyan-400 hover:text-white transition-colors">
+                        <Share2 className="w-5 h-5" /> Share Analysis
+                    </button>
+                </div>
+            </motion.div>
+        </motion.div>,
+        document.body
     );
 }
