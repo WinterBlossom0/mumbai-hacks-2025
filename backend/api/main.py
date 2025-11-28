@@ -17,6 +17,7 @@ from main.headline.generator import HeadlineGenerator
 from main.categorizer import ClaimCategorizer
 from database.supabase_client import SupabaseClient
 from reddit.monitor import RedditMonitor
+from image_retrieve.image_searcher import ImageSearcher
 import threading
 import asyncio
 
