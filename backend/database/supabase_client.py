@@ -335,16 +335,34 @@ class SupabaseClient:
             List of unannounced fake news verifications
         """
         try:
-            result = (
+            # Get all fake news verifications
+            verifications_result = (
                 self.client.table("verifications")
                 .select("*")
                 .eq("verdict", False)  # Only FALSE verdicts (fake news)
-                .is_("announced_to_telegram", "null")  # Not yet announced
                 .order("created_at", desc=True)
-                .limit(limit)
                 .execute()
             )
-            return result.data if result.data else []
+            
+            if not verifications_result.data:
+                return []
+            
+            # Get already announced verification IDs for this channel
+            announced_result = (
+                self.client.table("telegram_announcements")
+                .select("source_id")
+                .eq("source_type", "verification")
+                .eq("channel_id", channel_id)
+                .in_("announcement_status", ["sent", "pending"])
+                .execute()
+            )
+            
+            announced_ids = {item["source_id"] for item in announced_result.data} if announced_result.data else set()
+            
+            # Filter out already announced items
+            unannounced = [v for v in verifications_result.data if v["id"] not in announced_ids]
+            
+            return unannounced[:limit]
         except Exception as e:
             print(f"Error fetching unannounced fake news: {e}")
             return []
@@ -361,17 +379,35 @@ class SupabaseClient:
             List of unannounced fake Reddit posts
         """
         try:
-            result = (
+            # Get all fake Reddit posts that are not removed
+            posts_result = (
                 self.client.table("reddit_posts")
                 .select("*")
                 .eq("verdict", False)  # Only FALSE verdicts (fake news)
                 .eq("is_removed", False)  # Not removed
-                .is_("announced_to_telegram", "null")  # Not yet announced
                 .order("created_at", desc=True)
-                .limit(limit)
                 .execute()
             )
-            return result.data if result.data else []
+            
+            if not posts_result.data:
+                return []
+            
+            # Get already announced post IDs for this channel
+            announced_result = (
+                self.client.table("telegram_announcements")
+                .select("source_id")
+                .eq("source_type", "reddit_post")
+                .eq("channel_id", channel_id)
+                .in_("announcement_status", ["sent", "pending"])
+                .execute()
+            )
+            
+            announced_ids = {item["source_id"] for item in announced_result.data} if announced_result.data else set()
+            
+            # Filter out already announced items
+            unannounced = [p for p in posts_result.data if p["id"] not in announced_ids]
+            
+            return unannounced[:limit]
         except Exception as e:
             print(f"Error fetching unannounced Reddit fake news: {e}")
             return []
@@ -388,14 +424,19 @@ class SupabaseClient:
             True if successful, False otherwise
         """
         try:
+            # Insert or update announcement record
+            data = {
+                "source_type": "verification",
+                "source_id": verification_id,
+                "channel_id": channel_id,
+                "announcement_status": "sent",
+                "announced_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
             result = (
-                self.client.table("verifications")
-                .update({
-                    "announced_to_telegram": True,
-                    "telegram_channel_id": channel_id,
-                    "announced_at": datetime.utcnow().isoformat()
-                })
-                .eq("id", verification_id)
+                self.client.table("telegram_announcements")
+                .upsert(data, on_conflict="source_type,source_id,channel_id")
                 .execute()
             )
             return len(result.data) > 0
@@ -415,14 +456,19 @@ class SupabaseClient:
             True if successful, False otherwise
         """
         try:
+            # Insert or update announcement record
+            data = {
+                "source_type": "reddit_post",
+                "source_id": post_id,
+                "channel_id": channel_id,
+                "announcement_status": "sent",
+                "announced_at": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
             result = (
-                self.client.table("reddit_posts")
-                .update({
-                    "announced_to_telegram": True,
-                    "telegram_channel_id": channel_id,
-                    "announced_at": datetime.utcnow().isoformat()
-                })
-                .eq("id", post_id)
+                self.client.table("telegram_announcements")
+                .upsert(data, on_conflict="source_type,source_id,channel_id")
                 .execute()
             )
             return len(result.data) > 0
