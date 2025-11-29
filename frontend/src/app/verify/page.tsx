@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Link as LinkIcon, FileText, AlertCircle, CheckCircle, Loader2, Code } from 'lucide-react';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
+import { useSearchParams } from 'next/navigation';
 
-export default function VerifyPage() {
+function VerifyContent() {
     const [inputType, setInputType] = useState<'text' | 'url'>('text');
     const [content, setContent] = useState('');
     const [loading, setLoading] = useState(false);
@@ -14,6 +15,14 @@ export default function VerifyPage() {
     const [error, setError] = useState('');
     const [showJson, setShowJson] = useState(false);
     const { user } = useUser();
+    const searchParams = useSearchParams();
+
+    useEffect(() => {
+        const textParam = searchParams.get('text');
+        if (textParam) {
+            setContent(textParam);
+        }
+    }, [searchParams]);
 
     const handleVerify = async () => {
         if (!content.trim()) return;
@@ -22,6 +31,9 @@ export default function VerifyPage() {
         setError('');
         setResult(null);
 
+        const redditId = searchParams.get('reddit_id');
+        const subreddit = searchParams.get('subreddit');
+
         try {
             const data = await fetchAPI('/api/verify', {
                 method: 'POST',
@@ -29,7 +41,9 @@ export default function VerifyPage() {
                     input_type: inputType,
                     content: content,
                     user_id: user?.id || '0',
-                    user_email: user?.primaryEmailAddress?.emailAddress || 'user0@gmail.com'
+                    user_email: user?.primaryEmailAddress?.emailAddress || 'user0@gmail.com',
+                    reddit_id: redditId,
+                    subreddit: subreddit
                 })
             });
             setResult(data);
@@ -148,16 +162,11 @@ export default function VerifyPage() {
                                 <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
                                     <span>🤖</span> AI Reasoning
                                 </h3>
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {result.reasoning.split('\n').map((paragraph: string, i: number) => (
                                         paragraph.trim() && (
-                                            <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed">
-                                                {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
-                                                    if (part.startsWith('**') && part.endsWith('**')) {
-                                                        return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
-                                                    }
-                                                    return part;
-                                                })}
+                                            <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed">
+                                                {paragraph}
                                             </div>
                                         )
                                     ))}
@@ -166,12 +175,12 @@ export default function VerifyPage() {
 
                             <div className="glass-panel p-6">
                                 <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
-                                    <span>📌</span> Extracted Claims
+                                    <span>📌</span> Key Claims
                                 </h3>
-                                <ul className="space-y-3">
+                                <ul className="space-y-2">
                                     {result.claims.map((claim: string, i: number) => (
-                                        <li key={i} className="flex items-start gap-3 text-gray-300 text-sm">
-                                            <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 flex-shrink-0" />
+                                        <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
+                                            <span className="mt-1.5 w-1 h-1 rounded-full bg-cyan-500/50" />
                                             {claim}
                                         </li>
                                     ))}
@@ -180,32 +189,42 @@ export default function VerifyPage() {
                         </div>
 
                         {/* Sources */}
-                        {Object.keys(result.website_claims || {}).length > 0 && (
-                            <div className="glass-panel p-6">
-                                <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
-                                    <span>🌐</span> Sources Analyzed
-                                </h3>
-                                <div className="space-y-4">
-                                    {Object.entries(result.website_claims).map(([url, claims]: [string, any], i) => (
-                                        <div key={i} className="bg-white/5 rounded-lg p-4">
-                                            <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline break-all block mb-2">
-                                                {url}
-                                            </a>
-                                            <p className="text-xs text-gray-500">{claims.length} claims verified against this source</p>
-                                        </div>
-                                    ))}
-                                </div>
+                        <div className="glass-panel p-6">
+                            <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
+                                <span>🔗</span> Verified Sources
+                            </h3>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                {Object.entries(result.sources).map(([source, urls]: [string, any], i) => (
+                                    <div key={i} className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                        <h4 className="text-sm font-bold text-gray-300 mb-2 capitalize">{source}</h4>
+                                        <ul className="space-y-1">
+                                            {Array.isArray(urls) && urls.map((url: string, j: number) => (
+                                                <li key={j}>
+                                                    <a
+                                                        href={url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline break-all flex items-center gap-2"
+                                                    >
+                                                        <span className="w-1 h-1 rounded-full bg-cyan-500/50 shrink-0" />
+                                                        {url}
+                                                    </a>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                ))}
                             </div>
-                        )}
+                        </div>
 
                         {/* Raw JSON View */}
-                        <div className="glass-panel p-6">
+                        <div>
                             <button
                                 onClick={() => setShowJson(!showJson)}
                                 className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-cyan-400 transition-colors mb-4"
                             >
-                                <Code className="w-4 h-4" />
-                                {showJson ? 'HIDE_RAW_DATA' : 'VIEW_RAW_DATA'}
+                                <Code className="w-3 h-3" />
+                                {showJson ? 'HIDE RAW DATA' : 'VIEW RAW DATA'}
                             </button>
 
                             <AnimatePresence>
@@ -227,5 +246,13 @@ export default function VerifyPage() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+export default function VerifyPage() {
+    return (
+        <Suspense fallback={<div className="text-center py-20 text-cyan-400">Loading...</div>}>
+            <VerifyContent />
+        </Suspense>
     );
 }

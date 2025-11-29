@@ -53,6 +53,8 @@ class VerifyRequest(BaseModel):
     content: str
     user_id: Optional[str] = "0"
     user_email: Optional[str] = "user0@gmail.com"
+    reddit_id: Optional[str] = None
+    subreddit: Optional[str] = None
 
 
 class VerifyResponse(BaseModel):
@@ -93,10 +95,13 @@ class RedditPost(BaseModel):
     verdict: bool
     reasoning: str
     claims: List[str]
-    sources: Dict[str, List[str]]
+    sources: Optional[Dict[str, List[str]]] = None
     author: Optional[str]
     subreddit: str
     created_at: str
+    upvotes: int = 0
+    downvotes: int = 0
+    image_url: Optional[str] = None
 
 
 @app.get("/api/reddit-posts", response_model=List[RedditPost])
@@ -123,7 +128,6 @@ async def get_community_reddit(subreddit: str, limit: int = 10):
     except Exception as e:
         print(f"Error fetching community Reddit: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch subreddit: {str(e)}")
-
 
 
 @app.get("/")
@@ -216,6 +220,40 @@ async def verify_content(request: VerifyRequest):
         )
         verification_id = saved_record.get("id", "")
         print(f"Saved to Supabase with ID: {verification_id}")
+
+        # Save to Community Archive if reddit_id is present
+        if request.reddit_id and request.subreddit:
+            print(f"Saving to Community Archive: {request.subreddit} - {request.reddit_id}")
+            
+            # Generate headline for archive
+            headline = None
+            try:
+                from main.headline.generator import HeadlineGenerator
+                headline_gen = HeadlineGenerator()
+                headline = headline_gen.generate_headline(result["user"])
+            except Exception as e:
+                print(f"Error generating headline for archive: {e}")
+                headline = request.content[:100] + "..."
+
+            # Try to get image
+            image_url = None
+            try:
+                searcher = ImageSearcher()
+                image_url = searcher.get_image_for_claims(result["user"])
+            except Exception as e:
+                print(f"Error fetching image for archive: {e}")
+
+            db.save_community_archive(
+                reddit_id=request.reddit_id,
+                title=headline or request.content[:100],
+                body=request.content,
+                subreddit=request.subreddit,
+                verdict=final_result["verdict"],
+                reasoning=final_result["reasoning"],
+                claims=result["user"],
+                sources=sources,
+                image_url=image_url
+            )
 
         return VerifyResponse(
             verification_id=verification_id,
@@ -366,6 +404,18 @@ async def get_top_headlines(limit: int = 9):
         return headlines
     except Exception as e:
         print(f"Error fetching top headlines: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/community-archives")
+async def get_community_archives(limit: int = 50):
+    """Get archived community posts."""
+    try:
+        db = SupabaseClient()
+        archives = db.get_community_archives(limit=limit)
+        return archives
+    except Exception as e:
+        print(f"Error fetching community archives: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

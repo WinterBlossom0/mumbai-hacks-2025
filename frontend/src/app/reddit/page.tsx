@@ -10,12 +10,15 @@ export default function RedditPage() {
     const [activeTab, setActiveTab] = useState<'eyeoftruth' | 'community' | 'archive'>('eyeoftruth');
     const [feed, setFeed] = useState<any[]>([]);
     const [communityFeed, setCommunityFeed] = useState<any[]>([]);
+    const [archiveFeed, setArchiveFeed] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [communityLoading, setCommunityLoading] = useState(false);
+    const [archiveLoading, setArchiveLoading] = useState(false);
     const [subreddit, setSubreddit] = useState('');
 
     useEffect(() => {
         loadRedditFeed();
+        loadArchiveFeed();
     }, []);
 
     async function loadRedditFeed() {
@@ -44,10 +47,28 @@ export default function RedditPage() {
         }
     }
 
+    async function loadArchiveFeed() {
+        setArchiveLoading(true);
+        try {
+            const data = await fetchAPI('/api/community-archives?limit=50');
+            setArchiveFeed(data);
+        } catch (error) {
+            console.error('Failed to load archive feed:', error);
+        } finally {
+            setArchiveLoading(false);
+        }
+    }
+
     const handleSubredditSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         loadCommunityFeed(subreddit);
     };
+
+    const tabs = [
+        { id: 'eyeoftruth', label: 'r/eyeoftruth' },
+        { id: 'community', label: 'Community Reddit' },
+        { id: 'archive', label: 'Archive', icon: Archive },
+    ];
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-12 relative">
@@ -69,35 +90,26 @@ export default function RedditPage() {
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex flex-wrap gap-4 mb-8 p-1 bg-white/5 rounded-full border border-white/10 w-fit backdrop-blur-md">
-                    <button
-                        onClick={() => setActiveTab('eyeoftruth')}
-                        className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === 'eyeoftruth'
-                                ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        r/eyeoftruth
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('community')}
-                        className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === 'community'
-                                ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        Community Reddit
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('archive')}
-                        className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 flex items-center gap-2 ${activeTab === 'archive'
-                                ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
-                                : 'text-gray-400 hover:text-white hover:bg-white/5'
-                            }`}
-                    >
-                        <Archive className="w-4 h-4" /> Archive
-                    </button>
+                {/* Tabs with Bubble Animation */}
+                <div className="flex flex-wrap gap-2 mb-8 p-1 bg-white/5 rounded-full border border-white/10 w-fit backdrop-blur-md relative">
+                    {tabs.map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id as any)}
+                            className={`px-6 py-2 rounded-full font-semibold transition-colors duration-300 relative z-10 flex items-center gap-2 ${activeTab === tab.id ? 'text-white' : 'text-gray-400 hover:text-white'
+                                }`}
+                        >
+                            {activeTab === tab.id && (
+                                <motion.div
+                                    layoutId="activeTab"
+                                    className="absolute inset-0 bg-[#FF4500] rounded-full shadow-[0_0_20px_rgba(255,69,0,0.3)] -z-10"
+                                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                />
+                            )}
+                            {tab.icon && <tab.icon className="w-4 h-4" />}
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 {activeTab === 'eyeoftruth' && (
@@ -160,18 +172,31 @@ export default function RedditPage() {
                 )}
 
                 {activeTab === 'archive' && (
-                    <div className="text-center py-20 text-gray-500 bg-white/5 rounded-2xl border border-white/5">
-                        <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                        <p>Archive functionality coming soon...</p>
-                    </div>
+                    archiveLoading ? (
+                        <div className="text-center py-20 text-[#FF4500] animate-pulse">Loading archive...</div>
+                    ) : archiveFeed.length > 0 ? (
+                        <div className="space-y-6">
+                            {archiveFeed.map((item, index) => (
+                                <RedditCard key={item.id} item={item} index={index} isArchive={true} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20 text-gray-500 bg-white/5 rounded-2xl border border-white/5">
+                            <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                            <p>No archived posts yet. Verify community posts to add them here!</p>
+                        </div>
+                    )
                 )}
             </div>
         </div>
     );
 }
 
-function RedditCard({ item, index }: { item: any, index: number }) {
+function RedditCard({ item, index, isArchive = false }: { item: any, index: number, isArchive?: boolean }) {
     const [expanded, setExpanded] = useState(false);
+
+    // Construct verify URL with all necessary params
+    const verifyUrl = `/verify?text=${encodeURIComponent(item.title + "\n" + (item.body || ""))}&reddit_id=${item.id}&subreddit=${item.subreddit || 'unknown'}`;
 
     return (
         <motion.div
@@ -184,9 +209,11 @@ function RedditCard({ item, index }: { item: any, index: number }) {
             <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
                     <span className="text-sm text-[#FF4500] font-bold flex items-center gap-2 bg-[#FF4500]/10 px-3 py-1 rounded-full border border-[#FF4500]/20">
-                        u/{item.author}
+                        u/{item.author || 'unknown'}
                     </span>
-                    <span className="text-xs text-gray-500">{new Date(item.created_at * 1000).toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-500">
+                        {item.created_at ? new Date(item.created_at * (item.created_at > 10000000000 ? 1 : 1000)).toLocaleDateString() : 'Unknown date'}
+                    </span>
                 </div>
 
                 {/* Collapsed View Title */}
@@ -221,17 +248,19 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                         {item.body || (item.url ? <a href={item.url} target="_blank" className="text-blue-400 hover:underline">{item.url}</a> : "No content")}
                                     </div>
 
-                                    {/* Verify Button */}
-                                    <div className="mt-6 flex justify-end">
-                                        <Link
-                                            href={`/verify?text=${encodeURIComponent(item.title + "\n" + (item.body || ""))}`}
-                                            onClick={(e) => e.stopPropagation()}
-                                            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-full font-bold hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all transform hover:scale-105"
-                                        >
-                                            <ShieldQuestion className="w-5 h-5" />
-                                            Verify?
-                                        </Link>
-                                    </div>
+                                    {/* Verify Button - Only show if NOT already verified/archived */}
+                                    {!item.reasoning && !isArchive && (
+                                        <div className="mt-6 flex justify-end">
+                                            <Link
+                                                href={verifyUrl}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-full font-bold hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all transform hover:scale-105"
+                                            >
+                                                <ShieldQuestion className="w-5 h-5" />
+                                                Verify?
+                                            </Link>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Show AI Analysis only if reasoning exists (verified posts) */}

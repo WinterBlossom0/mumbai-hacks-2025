@@ -301,6 +301,60 @@ class SupabaseClient:
             print(f"Error fetching Reddit posts: {e}")
             return []
 
+    def save_community_archive(
+        self,
+        reddit_id: str,
+        title: str,
+        body: str,
+        subreddit: str,
+        verdict: bool,
+        reasoning: str,
+        claims: List[str],
+        sources: Dict[str, List[str]],
+        image_url: Optional[str] = None
+    ) -> Dict:
+        """Save a verified community post to archive."""
+        try:
+            # Check if exists first
+            existing = self.client.table("community_archives").select("id").eq("reddit_id", reddit_id).execute()
+            if existing.data:
+                return existing.data[0]
+
+            data = {
+                "reddit_id": reddit_id,
+                "title": title,
+                "body": body,
+                "subreddit": subreddit,
+                "verdict": verdict,
+                "reasoning": reasoning,
+                "claims": claims,
+                "sources": sources,
+                "image_url": image_url,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+            
+            result = self.client.table("community_archives").insert(data).execute()
+            return result.data[0] if result.data else {}
+        except Exception as e:
+            print(f"Error saving community archive: {e}")
+            # Don't raise, just log error to prevent breaking the flow
+            return {}
+
+    def get_community_archives(self, limit: int = 50) -> List[Dict]:
+        """Get archived community posts."""
+        try:
+            result = (
+                self.client.table("community_archives")
+                .select("*")
+                .order("created_at", desc=True)
+                .limit(limit)
+                .execute()
+            )
+            return result.data if result.data else []
+        except Exception as e:
+            print(f"Error fetching community archives: {e}")
+            return []
+
     def check_reddit_post_exists(self, reddit_id: str) -> bool:
         """Check if a Reddit post has already been processed."""
         try:
