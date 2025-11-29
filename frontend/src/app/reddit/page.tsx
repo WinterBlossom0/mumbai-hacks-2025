@@ -185,41 +185,47 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                             className="overflow-hidden"
                         >
                             <div className="pt-6 mt-6 border-t border-white/10 space-y-6">
-                                <div className="bg-white/5 rounded-lg p-4 border border-white/5">
-                                    <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
-                                        <span>🤖</span> AI Analysis
-                                    </h4>
-                                    <div className="space-y-3">
-                                        {item.reasoning.split('\n').map((paragraph: string, i: number) => (
-                                            paragraph.trim() && (
-                                                <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed">
-                                                    {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
-                                                        if (part.startsWith('**') && part.endsWith('**')) {
-                                                            return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
-                                                        }
-                                                        return part;
-                                                    })}
-                                                </div>
-                                            )
-                                        ))}
+                                {/* Show AI Analysis only if reasoning exists (verified posts) */}
+                                {item.reasoning && (
+                                    <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                        <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
+                                            <span>🤖</span> AI Analysis
+                                        </h4>
+                                        <div className="space-y-3">
+                                            {item.reasoning.split('\n').map((paragraph: string, i: number) => (
+                                                paragraph.trim() && (
+                                                    <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed">
+                                                        {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
+                                                            if (part.startsWith('**') && part.endsWith('**')) {
+                                                                return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
+                                                            }
+                                                            return part;
+                                                        })}
+                                                    </div>
+                                                )
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
-                                <div>
-                                    <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
-                                        <span>📌</span> Key Claims
-                                    </h4>
-                                    <ul className="space-y-2">
-                                        {item.claims.map((claim: string, i: number) => (
-                                            <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
-                                                <span className="mt-1.5 w-1 h-1 rounded-full bg-cyan-500/50" />
-                                                {claim}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
+                                {/* Show Claims only if they exist (verified posts) */}
+                                {item.claims && item.claims.length > 0 && (
+                                    <div>
+                                        <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
+                                            <span>📌</span> Key Claims
+                                        </h4>
+                                        <ul className="space-y-2">
+                                            {item.claims.map((claim: string, i: number) => (
+                                                <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
+                                                    <span className="mt-1.5 w-1 h-1 rounded-full bg-cyan-500/50" />
+                                                    {claim}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
 
-                                {/* Sources Section */}
+                                {/* Sources Section - only if they exist */}
                                 {item.sources && Object.keys(item.sources).length > 0 && (
                                     <div>
                                         <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
@@ -247,6 +253,35 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                                     </ul>
                                                 </div>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Community Post Stats */}
+                                {(item.score !== undefined || item.num_comments !== undefined) && (
+                                    <div className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                        <h4 className="text-cyan-400 font-medium mb-3 flex items-center gap-2">
+                                            <span>📊</span> Reddit Stats
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                            {item.score !== undefined && (
+                                                <div>
+                                                    <span className="text-gray-500">Score:</span>
+                                                    <span className="ml-2 text-white font-semibold">{item.score}</span>
+                                                </div>
+                                            )}
+                                            {item.num_comments !== undefined && (
+                                                <div>
+                                                    <span className="text-gray-500">Comments:</span>
+                                                    <span className="ml-2 text-white font-semibold">{item.num_comments}</span>
+                                                </div>
+                                            )}
+                                            {item.subreddit && (
+                                                <div>
+                                                    <span className="text-gray-500">Subreddit:</span>
+                                                    <span className="ml-2 text-[#FF4500] font-semibold">r/{item.subreddit}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
