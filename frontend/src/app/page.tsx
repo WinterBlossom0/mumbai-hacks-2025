@@ -4,13 +4,66 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Search, Eye, X, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 import CategoryFilter from '@/components/CategoryFilter';
 import PublicFeed from '@/components/PublicFeed';
 import NewsTicker from '@/components/NewsTicker';
+import { fetchAPI } from '@/lib/api';
 
 export default function Home() {
     const [activeCategory, setActiveCategory] = useState('all');
     const [heroArticle, setHeroArticle] = useState<any>(null);
+    const [heroUpvotes, setHeroUpvotes] = useState(0);
+    const [heroDownvotes, setHeroDownvotes] = useState(0);
+    const [heroUserVote, setHeroUserVote] = useState<number | null>(null);
+    const { user } = useUser();
+    const currentUserEmail = user?.primaryEmailAddress?.emailAddress;
+
+    const handleHeroArticleClick = (item: any) => {
+        setHeroArticle(item);
+        setHeroUpvotes(item.upvotes || 0);
+        setHeroDownvotes(item.downvotes || 0);
+        setHeroUserVote(null);
+    };
+
+    const handleHeroVote = async (voteType: number) => {
+        if (!currentUserEmail) {
+            alert('Please sign in to vote');
+            return;
+        }
+        if (!heroArticle) return;
+
+        try {
+            if (heroUserVote === voteType) {
+                setHeroUserVote(null);
+                if (voteType === 1) setHeroUpvotes(heroUpvotes - 1);
+                else setHeroDownvotes(heroDownvotes - 1);
+            } else {
+                if (heroUserVote === 1) setHeroUpvotes(heroUpvotes - 1);
+                if (heroUserVote === -1) setHeroDownvotes(heroDownvotes - 1);
+
+                setHeroUserVote(voteType);
+                if (voteType === 1) setHeroUpvotes(heroUpvotes + 1);
+                else setHeroDownvotes(heroDownvotes + 1);
+            }
+
+            await fetchAPI('/api/vote', {
+                method: 'POST',
+                body: JSON.stringify({
+                    verification_id: heroArticle.id,
+                    user_id: currentUserEmail,
+                    vote_type: voteType
+                })
+            });
+        } catch (error) {
+            console.error('Vote failed:', error);
+            setHeroUpvotes(heroArticle.upvotes || 0);
+            setHeroDownvotes(heroArticle.downvotes || 0);
+            setHeroUserVote(null);
+        }
+    };
+
+    const isOwnHeroPost = currentUserEmail && heroArticle && heroArticle.user_email === currentUserEmail;
 
     return (
         <div className="min-h-screen relative overflow-hidden">
@@ -20,7 +73,7 @@ export default function Home() {
             <div className="fixed bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-cyan-600/30 rounded-full blur-[120px] animate-pulse delay-1000" />
 
             <div className="pb-4">
-                <NewsTicker onArticleClick={setHeroArticle} />
+                <NewsTicker onArticleClick={handleHeroArticleClick} />
             </div>
 
             {/* Hero Section */}
@@ -90,12 +143,31 @@ export default function Home() {
                                 </div>
 
                                 <div className="mt-8 pt-8 border-t border-white/10 flex items-center gap-6">
-                                    <div className="flex items-center gap-2 text-gray-400">
-                                        <ThumbsUp className="w-5 h-5" /> {heroArticle.upvotes || 0}
-                                    </div>
-                                    <div className="flex items-center gap-2 text-gray-400">
-                                        <ThumbsDown className="w-5 h-5" /> {heroArticle.downvotes || 0}
-                                    </div>
+                                    {isOwnHeroPost ? (
+                                        <>
+                                            <div className="text-gray-400">
+                                                <span className="text-cyan-400 font-semibold">{heroUpvotes}</span> upvotes
+                                            </div>
+                                            <div className="text-gray-400">
+                                                <span className="text-red-400 font-semibold">{heroDownvotes}</span> downvotes
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <button
+                                                className={`flex items-center gap-2 transition-colors ${heroUserVote === 1 ? 'text-cyan-400' : 'text-gray-400 hover:text-cyan-400'}`}
+                                                onClick={() => handleHeroVote(1)}
+                                            >
+                                                <ThumbsUp className="w-5 h-5" /> {heroUpvotes}
+                                            </button>
+                                            <button
+                                                className={`flex items-center gap-2 transition-colors ${heroUserVote === -1 ? 'text-red-400' : 'text-gray-400 hover:text-red-400'}`}
+                                                onClick={() => handleHeroVote(-1)}
+                                            >
+                                                <ThumbsDown className="w-5 h-5" /> {heroDownvotes}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </motion.div>
                         ) : (
