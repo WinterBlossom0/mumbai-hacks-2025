@@ -3,10 +3,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
-import { MessageSquare, ExternalLink, Code, Search } from 'lucide-react';
+import { MessageSquare, ExternalLink, Code, Search, Archive, ShieldQuestion } from 'lucide-react';
+import Link from 'next/link';
 
 export default function RedditPage() {
-    const [activeTab, setActiveTab] = useState<'eyeoftruth' | 'community'>('eyeoftruth');
+    const [activeTab, setActiveTab] = useState<'eyeoftruth' | 'community' | 'archive'>('eyeoftruth');
     const [feed, setFeed] = useState<any[]>([]);
     const [communityFeed, setCommunityFeed] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -57,40 +58,51 @@ export default function RedditPage() {
 
             <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 bg-[#FF4500] rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(255,69,0,0.3)]">
+                    <div className="w-12 h-12 bg-gradient-to-br from-[#FF4500] to-orange-600 rounded-2xl flex items-center justify-center shadow-[0_0_30px_rgba(255,69,0,0.4)] border border-white/10">
                         <MessageSquare className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-bold">Reddit Feed</h1>
+                        <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+                            Reddit Feed
+                        </h1>
                         <p className="text-gray-400">Browse verified posts and community content</p>
                     </div>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex gap-4 mb-8">
+                <div className="flex flex-wrap gap-4 mb-8 p-1 bg-white/5 rounded-full border border-white/10 w-fit backdrop-blur-md">
                     <button
                         onClick={() => setActiveTab('eyeoftruth')}
-                        className={`px-6 py-3 rounded-full font-semibold transition-all ${activeTab === 'eyeoftruth'
-                            ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                        className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === 'eyeoftruth'
+                                ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         r/eyeoftruth
                     </button>
                     <button
                         onClick={() => setActiveTab('community')}
-                        className={`px-6 py-3 rounded-full font-semibold transition-all ${activeTab === 'community'
-                            ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
-                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                        className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 ${activeTab === 'community'
+                                ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
                             }`}
                     >
                         Community Reddit
                     </button>
+                    <button
+                        onClick={() => setActiveTab('archive')}
+                        className={`px-6 py-2 rounded-full font-semibold transition-all duration-300 flex items-center gap-2 ${activeTab === 'archive'
+                                ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                            }`}
+                    >
+                        <Archive className="w-4 h-4" /> Archive
+                    </button>
                 </div>
 
-                {activeTab === 'eyeoftruth' ? (
+                {activeTab === 'eyeoftruth' && (
                     loading ? (
-                        <div className="text-center py-20 text-cyan-400 animate-pulse">Loading Reddit feed...</div>
+                        <div className="text-center py-20 text-[#FF4500] animate-pulse">Loading Reddit feed...</div>
                     ) : (
                         <div className="space-y-6">
                             {feed.map((item, index) => (
@@ -98,28 +110,30 @@ export default function RedditPage() {
                             ))}
                         </div>
                     )
-                ) : (
+                )}
+
+                {activeTab === 'community' && (
                     <div>
                         {/* Subreddit Search */}
-                        <form onSubmit={handleSubredditSubmit} className="glass-panel p-6 mb-8">
+                        <form onSubmit={handleSubredditSubmit} className="glass-panel p-6 mb-8 border-[#FF4500]/20 shadow-[0_0_30px_rgba(255,69,0,0.1)]">
                             <label className="text-sm font-semibold text-gray-400 mb-3 block">
                                 Enter Subreddit Name
                             </label>
                             <div className="flex gap-4">
-                                <div className="flex-1 relative">
-                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">r/</span>
+                                <div className="flex-1 relative group">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-[#FF4500] transition-colors">r/</span>
                                     <input
                                         type="text"
                                         value={subreddit}
                                         onChange={(e) => setSubreddit(e.target.value)}
                                         placeholder="AskReddit"
-                                        className="w-full bg-white/5 border border-white/10 rounded-full px-4 pl-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#FF4500] transition-colors"
+                                        className="w-full bg-black/20 border border-white/10 rounded-xl px-4 pl-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#FF4500] focus:ring-1 focus:ring-[#FF4500] transition-all"
                                     />
                                 </div>
                                 <button
                                     type="submit"
                                     disabled={communityLoading}
-                                    className="px-8 py-3 bg-[#FF4500] text-white rounded-full font-semibold hover:shadow-[0_0_20px_rgba(255,69,0,0.3)] transition-all disabled:opacity-50 flex items-center gap-2"
+                                    className="px-8 py-3 bg-gradient-to-r from-[#FF4500] to-orange-600 text-white rounded-xl font-semibold hover:shadow-[0_0_20px_rgba(255,69,0,0.4)] transition-all disabled:opacity-50 flex items-center gap-2 border border-white/10"
                                 >
                                     <Search className="w-5 h-5" />
                                     {communityLoading ? 'Loading...' : 'Search'}
@@ -129,7 +143,7 @@ export default function RedditPage() {
 
                         {/* Community Feed */}
                         {communityLoading ? (
-                            <div className="text-center py-20 text-cyan-400 animate-pulse">Loading subreddit...</div>
+                            <div className="text-center py-20 text-[#FF4500] animate-pulse">Loading subreddit...</div>
                         ) : communityFeed.length > 0 ? (
                             <div className="space-y-6">
                                 {communityFeed.map((item, index) => (
@@ -137,10 +151,18 @@ export default function RedditPage() {
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-20 text-gray-500">
-                                Enter a subreddit name above to browse its latest posts
+                            <div className="text-center py-20 text-gray-500 bg-white/5 rounded-2xl border border-white/5">
+                                <Search className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                <p>Enter a subreddit name above to browse its latest posts</p>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {activeTab === 'archive' && (
+                    <div className="text-center py-20 text-gray-500 bg-white/5 rounded-2xl border border-white/5">
+                        <Archive className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                        <p>Archive functionality coming soon...</p>
                     </div>
                 )}
             </div>
@@ -150,31 +172,36 @@ export default function RedditPage() {
 
 function RedditCard({ item, index }: { item: any, index: number }) {
     const [expanded, setExpanded] = useState(false);
-    const [showJson, setShowJson] = useState(false);
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
-            className="glass-panel p-6 hover:bg-white/5 transition-colors cursor-pointer group relative overflow-hidden"
+            className={`glass-panel p-6 transition-all duration-300 cursor-pointer group relative overflow-hidden border-l-4 ${expanded ? 'border-l-[#FF4500] bg-white/10' : 'border-l-transparent hover:bg-white/5'}`}
             onClick={() => setExpanded(!expanded)}
         >
             <div className="relative z-10">
                 <div className="flex items-center justify-between mb-4">
-                    <span className="text-sm text-[#FF4500] font-medium flex items-center gap-2">
+                    <span className="text-sm text-[#FF4500] font-bold flex items-center gap-2 bg-[#FF4500]/10 px-3 py-1 rounded-full border border-[#FF4500]/20">
                         u/{item.author}
                     </span>
-                    <span className="text-xs text-gray-500">{new Date(item.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-gray-500">{new Date(item.created_at * 1000).toLocaleDateString()}</span>
                 </div>
 
-                {item.headline && (
-                    <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#FF4500] transition-colors">{item.headline}</h3>
+                {/* Collapsed View Title */}
+                {!expanded && (
+                    <h3 className="text-xl font-bold mb-3 text-white group-hover:text-[#FF4500] transition-colors line-clamp-2">
+                        {item.headline || item.title}
+                    </h3>
                 )}
 
-                <div className={`text-gray-300 leading-relaxed ${!expanded && !item.headline ? 'line-clamp-3' : ''}`}>
-                    {item.body || item.url || item.title}
-                </div>
+                {/* Collapsed View Preview */}
+                {!expanded && (
+                    <div className="text-gray-400 leading-relaxed line-clamp-3 text-sm">
+                        {item.body || item.url || item.title}
+                    </div>
+                )}
 
                 <AnimatePresence>
                     {expanded && (
@@ -184,17 +211,39 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                         >
-                            <div className="pt-6 mt-6 border-t border-white/10 space-y-6">
+                            <div className="pt-4 space-y-6">
+                                {/* Full Header & Body for Expanded View */}
+                                <div className="bg-black/20 rounded-xl p-6 border border-white/5">
+                                    <h3 className="text-2xl font-bold mb-4 text-white">
+                                        {item.title}
+                                    </h3>
+                                    <div className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                        {item.body || (item.url ? <a href={item.url} target="_blank" className="text-blue-400 hover:underline">{item.url}</a> : "No content")}
+                                    </div>
+
+                                    {/* Verify Button */}
+                                    <div className="mt-6 flex justify-end">
+                                        <Link
+                                            href={`/verify?text=${encodeURIComponent(item.title + "\n" + (item.body || ""))}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="flex items-center gap-2 px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-full font-bold hover:shadow-[0_0_20px_rgba(0,242,255,0.4)] transition-all transform hover:scale-105"
+                                        >
+                                            <ShieldQuestion className="w-5 h-5" />
+                                            Verify?
+                                        </Link>
+                                    </div>
+                                </div>
+
                                 {/* Show AI Analysis only if reasoning exists (verified posts) */}
                                 {item.reasoning && (
-                                    <div className="bg-white/5 rounded-lg p-4 border border-white/5">
-                                        <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
+                                    <div className="bg-white/5 rounded-xl p-6 border border-white/5">
+                                        <h4 className="text-cyan-400 font-bold mb-4 flex items-center gap-2 text-lg">
                                             <span>🤖</span> AI Analysis
                                         </h4>
-                                        <div className="space-y-3">
+                                        <div className="space-y-4">
                                             {item.reasoning.split('\n').map((paragraph: string, i: number) => (
                                                 paragraph.trim() && (
-                                                    <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed">
+                                                    <div key={i} className="bg-black/20 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed">
                                                         {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
                                                             if (part.startsWith('**') && part.endsWith('**')) {
                                                                 return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
@@ -211,13 +260,13 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                 {/* Show Claims only if they exist (verified posts) */}
                                 {item.claims && item.claims.length > 0 && (
                                     <div>
-                                        <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
+                                        <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
                                             <span>📌</span> Key Claims
                                         </h4>
-                                        <ul className="space-y-2">
+                                        <ul className="space-y-3">
                                             {item.claims.map((claim: string, i: number) => (
-                                                <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
-                                                    <span className="mt-1.5 w-1 h-1 rounded-full bg-cyan-500/50" />
+                                                <li key={i} className="text-gray-300 flex items-start gap-3 bg-white/5 p-3 rounded-lg border border-white/5">
+                                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
                                                     {claim}
                                                 </li>
                                             ))}
@@ -225,27 +274,56 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                     </div>
                                 )}
 
+                                {/* Community Post Stats */}
+                                {(item.score !== undefined || item.num_comments !== undefined) && (
+                                    <div className="bg-[#FF4500]/5 rounded-xl p-6 border border-[#FF4500]/20">
+                                        <h4 className="text-[#FF4500] font-bold mb-4 flex items-center gap-2">
+                                            <span>📊</span> Reddit Stats
+                                        </h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {item.score !== undefined && (
+                                                <div className="bg-black/20 p-3 rounded-lg border border-[#FF4500]/10">
+                                                    <span className="text-gray-500 text-sm block mb-1">Score</span>
+                                                    <span className="text-white font-bold text-xl">{item.score}</span>
+                                                </div>
+                                            )}
+                                            {item.num_comments !== undefined && (
+                                                <div className="bg-black/20 p-3 rounded-lg border border-[#FF4500]/10">
+                                                    <span className="text-gray-500 text-sm block mb-1">Comments</span>
+                                                    <span className="text-white font-bold text-xl">{item.num_comments}</span>
+                                                </div>
+                                            )}
+                                            {item.subreddit && (
+                                                <div className="col-span-2 bg-black/20 p-3 rounded-lg border border-[#FF4500]/10">
+                                                    <span className="text-gray-500 text-sm block mb-1">Subreddit</span>
+                                                    <span className="text-[#FF4500] font-bold">r/{item.subreddit}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Sources Section - only if they exist */}
                                 {item.sources && Object.keys(item.sources).length > 0 && (
                                     <div>
-                                        <h4 className="text-cyan-400 font-medium mb-2 flex items-center gap-2">
+                                        <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
                                             <span>🔗</span> Sources
                                         </h4>
                                         <div className="space-y-3">
                                             {Object.entries(item.sources).map(([source, urls]: [string, any], i) => (
-                                                <div key={i} className="bg-white/5 rounded-lg p-3 border border-white/5">
-                                                    <h5 className="text-xs font-semibold text-gray-300 mb-1 capitalize">{source}</h5>
-                                                    <ul className="space-y-1">
+                                                <div key={i} className="bg-white/5 rounded-lg p-4 border border-white/5">
+                                                    <h5 className="text-sm font-bold text-gray-300 mb-2 capitalize">{source}</h5>
+                                                    <ul className="space-y-2">
                                                         {Array.isArray(urls) && urls.map((url: string, j: number) => (
                                                             <li key={j}>
                                                                 <a
                                                                     href={url}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline break-all flex items-center gap-2"
+                                                                    className="text-sm text-cyan-400 hover:text-cyan-300 hover:underline break-all flex items-center gap-2"
                                                                     onClick={(e) => e.stopPropagation()}
                                                                 >
-                                                                    <span className="w-1 h-1 rounded-full bg-cyan-500/50 shrink-0" />
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/50 shrink-0" />
                                                                     {url}
                                                                 </a>
                                                             </li>
@@ -257,76 +335,20 @@ function RedditCard({ item, index }: { item: any, index: number }) {
                                     </div>
                                 )}
 
-                                {/* Community Post Stats */}
-                                {(item.score !== undefined || item.num_comments !== undefined) && (
-                                    <div className="bg-white/5 rounded-lg p-4 border border-white/5">
-                                        <h4 className="text-cyan-400 font-medium mb-3 flex items-center gap-2">
-                                            <span>📊</span> Reddit Stats
-                                        </h4>
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            {item.score !== undefined && (
-                                                <div>
-                                                    <span className="text-gray-500">Score:</span>
-                                                    <span className="ml-2 text-white font-semibold">{item.score}</span>
-                                                </div>
-                                            )}
-                                            {item.num_comments !== undefined && (
-                                                <div>
-                                                    <span className="text-gray-500">Comments:</span>
-                                                    <span className="ml-2 text-white font-semibold">{item.num_comments}</span>
-                                                </div>
-                                            )}
-                                            {item.subreddit && (
-                                                <div>
-                                                    <span className="text-gray-500">Subreddit:</span>
-                                                    <span className="ml-2 text-[#FF4500] font-semibold">r/{item.subreddit}</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                {item.url && (
+                                    <div className="pt-4 border-t border-white/10">
+                                        <a
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            View Original Source
+                                        </a>
                                     </div>
                                 )}
-
-                                {item.url && (
-                                    <a
-                                        href={item.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm hover:underline"
-                                        onClick={(e) => e.stopPropagation()}
-                                    >
-                                        <ExternalLink className="w-4 h-4" />
-                                        View Original Source
-                                    </a>
-                                )}
-
-                                {/* Raw JSON View */}
-                                <div>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowJson(!showJson);
-                                        }}
-                                        className="flex items-center gap-2 text-xs font-mono text-gray-500 hover:text-cyan-400 transition-colors mb-4"
-                                    >
-                                        <Code className="w-3 h-3" />
-                                        {showJson ? 'HIDE_RAW_DATA' : 'VIEW_RAW_DATA'}
-                                    </button>
-
-                                    <AnimatePresence>
-                                        {showJson && (
-                                            <motion.div
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                className="overflow-hidden"
-                                            >
-                                                <pre className="text-xs font-mono text-green-400/80 overflow-x-auto p-4 bg-black/50 rounded-xl border border-white/5 custom-scrollbar" onClick={(e) => e.stopPropagation()}>
-                                                    {JSON.stringify(item, null, 2)}
-                                                </pre>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
                             </div>
                         </motion.div>
                     )}
