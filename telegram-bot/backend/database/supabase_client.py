@@ -424,14 +424,17 @@ class SupabaseClient:
             True if successful, False otherwise
         """
         try:
-            # Insert announcement record
+            import uuid
+            # Insert announcement record with generated UUID
             data = {
+                "id": str(uuid.uuid4()),
                 "source_type": "verification",
                 "source_id": verification_id,
                 "channel_id": channel_id,
                 "announcement_status": "sent",
                 "announced_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.utcnow().isoformat()
             }
             
             result = (
@@ -439,6 +442,7 @@ class SupabaseClient:
                 .insert(data)
                 .execute()
             )
+            print(f"Successfully marked verification {verification_id} as announced")
             return len(result.data) > 0
         except Exception as e:
             # If it's a duplicate key error, that's actually fine - it means it was already announced
@@ -446,7 +450,9 @@ class SupabaseClient:
             if "duplicate key" in error_str.lower() or "unique constraint" in error_str.lower():
                 print(f"Verification {verification_id} already announced to channel {channel_id}")
                 return True
-            print(f"Error marking verification as announced: {e}")
+            print(f"Error marking verification as announced: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def mark_reddit_post_as_announced(self, post_id: str, channel_id: str) -> bool:
@@ -461,14 +467,17 @@ class SupabaseClient:
             True if successful, False otherwise
         """
         try:
-            # Insert announcement record
+            import uuid
+            # Insert announcement record with generated UUID
             data = {
+                "id": str(uuid.uuid4()),
                 "source_type": "reddit_post",
                 "source_id": post_id,
                 "channel_id": channel_id,
                 "announcement_status": "sent",
                 "announced_at": datetime.utcnow().isoformat(),
-                "updated_at": datetime.utcnow().isoformat()
+                "updated_at": datetime.utcnow().isoformat(),
+                "created_at": datetime.utcnow().isoformat()
             }
             
             result = (
@@ -476,6 +485,7 @@ class SupabaseClient:
                 .insert(data)
                 .execute()
             )
+            print(f"Successfully marked Reddit post {post_id} as announced")
             return len(result.data) > 0
         except Exception as e:
             # If it's a duplicate key error, that's actually fine - it means it was already announced
@@ -483,5 +493,7 @@ class SupabaseClient:
             if "duplicate key" in error_str.lower() or "unique constraint" in error_str.lower():
                 print(f"Reddit post {post_id} already announced to channel {channel_id}")
                 return True
-            print(f"Error marking Reddit post as announced: {e}")
+            print(f"Error marking Reddit post as announced: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
