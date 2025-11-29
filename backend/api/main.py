@@ -236,13 +236,8 @@ async def verify_content(request: VerifyRequest):
                 print(f"Error generating headline for archive: {e}")
                 headline = request.content[:100] + "..."
 
-            # Try to get image
+            # Image search disabled for community archives as per user request
             image_url = None
-            try:
-                searcher = ImageSearcher()
-                image_url = searcher.get_image_for_claims(result["user"])
-            except Exception as e:
-                print(f"Error fetching image for archive: {e}")
 
             db.save_community_archive(
                 reddit_id=request.reddit_id,
