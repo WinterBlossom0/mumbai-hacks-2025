@@ -424,7 +424,7 @@ class SupabaseClient:
             True if successful, False otherwise
         """
         try:
-            # Insert or update announcement record
+            # Insert announcement record
             data = {
                 "source_type": "verification",
                 "source_id": verification_id,
@@ -436,11 +436,16 @@ class SupabaseClient:
             
             result = (
                 self.client.table("telegram_announcements")
-                .upsert(data, on_conflict="source_type,source_id,channel_id")
+                .insert(data)
                 .execute()
             )
             return len(result.data) > 0
         except Exception as e:
+            # If it's a duplicate key error, that's actually fine - it means it was already announced
+            error_str = str(e)
+            if "duplicate key" in error_str.lower() or "unique constraint" in error_str.lower():
+                print(f"Verification {verification_id} already announced to channel {channel_id}")
+                return True
             print(f"Error marking verification as announced: {e}")
             return False
 
@@ -456,7 +461,7 @@ class SupabaseClient:
             True if successful, False otherwise
         """
         try:
-            # Insert or update announcement record
+            # Insert announcement record
             data = {
                 "source_type": "reddit_post",
                 "source_id": post_id,
@@ -468,10 +473,15 @@ class SupabaseClient:
             
             result = (
                 self.client.table("telegram_announcements")
-                .upsert(data, on_conflict="source_type,source_id,channel_id")
+                .insert(data)
                 .execute()
             )
             return len(result.data) > 0
         except Exception as e:
+            # If it's a duplicate key error, that's actually fine - it means it was already announced
+            error_str = str(e)
+            if "duplicate key" in error_str.lower() or "unique constraint" in error_str.lower():
+                print(f"Reddit post {post_id} already announced to channel {channel_id}")
+                return True
             print(f"Error marking Reddit post as announced: {e}")
             return False
