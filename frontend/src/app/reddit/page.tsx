@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
-import { MessageSquare, ExternalLink, Code } from 'lucide-react';
+import { MessageSquare, ExternalLink, Code, Search } from 'lucide-react';
 
 export default function RedditPage() {
+    const [activeTab, setActiveTab] = useState<'eyeoftruth' | 'community'>('eyeoftruth');
     const [feed, setFeed] = useState<any[]>([]);
+    const [communityFeed, setCommunityFeed] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [communityLoading, setCommunityLoading] = useState(false);
+    const [subreddit, setSubreddit] = useState('');
 
     useEffect(() => {
         loadRedditFeed();
@@ -24,7 +28,25 @@ export default function RedditPage() {
         }
     }
 
-    if (loading) return <div className="text-center py-20 text-cyan-400 animate-pulse">Loading Reddit feed...</div>;
+    async function loadCommunityFeed(subredditName: string) {
+        if (!subredditName.trim()) return;
+
+        setCommunityLoading(true);
+        try {
+            const data = await fetchAPI(`/api/reddit-community?subreddit=${encodeURIComponent(subredditName)}&limit=10`);
+            setCommunityFeed(data);
+        } catch (error) {
+            console.error('Failed to load community feed:', error);
+            alert('Failed to load subreddit. Please check the name and try again.');
+        } finally {
+            setCommunityLoading(false);
+        }
+    }
+
+    const handleSubredditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        loadCommunityFeed(subreddit);
+    };
 
     return (
         <div className="max-w-4xl mx-auto px-4 py-12 relative">
@@ -39,16 +61,88 @@ export default function RedditPage() {
                         <MessageSquare className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                        <h1 className="text-4xl font-bold">r/eyeoftruth Feed</h1>
-                        <p className="text-gray-400">Live verified posts from our subreddit.</p>
+                        <h1 className="text-4xl font-bold">Reddit Feed</h1>
+                        <p className="text-gray-400">Browse verified posts and community content</p>
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    {feed.map((item, index) => (
-                        <RedditCard key={item.id} item={item} index={index} />
-                    ))}
+                {/* Tabs */}
+                <div className="flex gap-4 mb-8">
+                    <button
+                        onClick={() => setActiveTab('eyeoftruth')}
+                        className={`px-6 py-3 rounded-full font-semibold transition-all ${activeTab === 'eyeoftruth'
+                            ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
+                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            }`}
+                    >
+                        r/eyeoftruth
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('community')}
+                        className={`px-6 py-3 rounded-full font-semibold transition-all ${activeTab === 'community'
+                            ? 'bg-[#FF4500] text-white shadow-[0_0_20px_rgba(255,69,0,0.3)]'
+                            : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                            }`}
+                    >
+                        Community Reddit
+                    </button>
                 </div>
+
+                {activeTab === 'eyeoftruth' ? (
+                    loading ? (
+                        <div className="text-center py-20 text-cyan-400 animate-pulse">Loading Reddit feed...</div>
+                    ) : (
+                        <div className="space-y-6">
+                            {feed.map((item, index) => (
+                                <RedditCard key={item.id} item={item} index={index} />
+                            ))}
+                        </div>
+                    )
+                ) : (
+                    <div>
+                        {/* Subreddit Search */}
+                        <form onSubmit={handleSubredditSubmit} className="glass-panel p-6 mb-8">
+                            <label className="text-sm font-semibold text-gray-400 mb-3 block">
+                                Enter Subreddit Name
+                            </label>
+                            <div className="flex gap-4">
+                                <div className="flex-1 relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">r/</span>
+                                    <input
+                                        type="text"
+                                        value={subreddit}
+                                        onChange={(e) => setSubreddit(e.target.value)}
+                                        placeholder="AskReddit"
+                                        className="w-full bg-white/5 border border-white/10 rounded-full px-4 pl-10 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-[#FF4500] transition-colors"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={communityLoading}
+                                    className="px-8 py-3 bg-[#FF4500] text-white rounded-full font-semibold hover:shadow-[0_0_20px_rgba(255,69,0,0.3)] transition-all disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    <Search className="w-5 h-5" />
+                                    {communityLoading ? 'Loading...' : 'Search'}
+                                </button>
+                            </div>
+                        </form>
+
+                        {/* Community Feed */}
+                        {communityLoading ? (
+                            <div className="text-center py-20 text-cyan-400 animate-pulse">Loading subreddit...</div>
+                        ) : communityFeed.length > 0 ? (
+                            <div className="space-y-6">
+                                {communityFeed.map((item, index) => (
+                                    <RedditCard key={item.id} item={item} index={index} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 text-gray-500">
+                                Enter a subreddit name above to browse its latest posts
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

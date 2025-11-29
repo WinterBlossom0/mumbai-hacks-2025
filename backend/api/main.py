@@ -111,6 +111,21 @@ async def get_reddit_posts(limit: int = 50):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/reddit-community")
+async def get_community_reddit(subreddit: str, limit: int = 10):
+    """Fetch posts from any subreddit."""
+    try:
+        from reddit.feed_retriever import FeedRetriever
+        
+        retriever = FeedRetriever()
+        posts = retriever.get_subreddit_posts(subreddit, limit=limit)
+        return posts
+    except Exception as e:
+        print(f"Error fetching community Reddit: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch subreddit: {str(e)}")
+
+
+
 @app.get("/")
 async def root():
     return {"message": "Truth Lens API", "status": "running", "version": "1.0.0"}
