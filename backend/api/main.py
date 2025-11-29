@@ -55,6 +55,7 @@ class VerifyRequest(BaseModel):
     user_email: Optional[str] = "user0@gmail.com"
     reddit_id: Optional[str] = None
     subreddit: Optional[str] = None
+    author: Optional[str] = None
 
 
 class VerifyResponse(BaseModel):
@@ -252,7 +253,8 @@ async def verify_content(request: VerifyRequest):
                 reasoning=final_result["reasoning"],
                 claims=result["user"],
                 sources=sources,
-                image_url=image_url
+                image_url=image_url,
+                author=request.author
             )
 
         return VerifyResponse(

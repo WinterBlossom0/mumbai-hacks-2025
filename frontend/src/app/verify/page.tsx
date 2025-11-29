@@ -17,15 +17,25 @@ function VerifyContent() {
     const { user } = useUser();
     const searchParams = useSearchParams();
 
+    const [hasAutoVerified, setHasAutoVerified] = useState(false);
+
     useEffect(() => {
         const textParam = searchParams.get('text');
+        const autoParam = searchParams.get('auto');
+
         if (textParam) {
             setContent(textParam);
+
+            if (autoParam === 'true' && !hasAutoVerified) {
+                setHasAutoVerified(true);
+                handleVerify(textParam);
+            }
         }
     }, [searchParams]);
 
-    const handleVerify = async () => {
-        if (!content.trim()) return;
+    const handleVerify = async (textOverride?: string) => {
+        const textToVerify = textOverride || content;
+        if (!textToVerify?.trim()) return;
 
         setLoading(true);
         setError('');
@@ -33,17 +43,19 @@ function VerifyContent() {
 
         const redditId = searchParams.get('reddit_id');
         const subreddit = searchParams.get('subreddit');
+        const author = searchParams.get('author');
 
         try {
             const data = await fetchAPI('/api/verify', {
                 method: 'POST',
                 body: JSON.stringify({
                     input_type: inputType,
-                    content: content,
+                    content: textToVerify,
                     user_id: user?.id || '0',
                     user_email: user?.primaryEmailAddress?.emailAddress || 'user0@gmail.com',
                     reddit_id: redditId,
-                    subreddit: subreddit
+                    subreddit: subreddit,
+                    author: author
                 })
             });
             setResult(data);
@@ -114,7 +126,7 @@ function VerifyContent() {
 
                 <div className="mt-6 flex justify-end">
                     <button
-                        onClick={handleVerify}
+                        onClick={() => handleVerify()}
                         disabled={loading || !content.trim()}
                         className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-lg font-bold text-white shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
                     >

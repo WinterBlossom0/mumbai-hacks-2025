@@ -196,7 +196,7 @@ function RedditCard({ item, index, isArchive = false }: { item: any, index: numb
     const [expanded, setExpanded] = useState(false);
 
     // Construct verify URL with all necessary params
-    const verifyUrl = `/verify?text=${encodeURIComponent(item.title + "\n" + (item.body || ""))}&reddit_id=${item.id}&subreddit=${item.subreddit || 'unknown'}`;
+    const verifyUrl = `/verify?text=${encodeURIComponent(item.title + "\n" + (item.body || ""))}&reddit_id=${item.id}&subreddit=${item.subreddit || 'unknown'}&author=${item.author || 'unknown'}&auto=true`;
 
     return (
         <motion.div

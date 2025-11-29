@@ -311,7 +311,8 @@ class SupabaseClient:
         reasoning: str,
         claims: List[str],
         sources: Dict[str, List[str]],
-        image_url: Optional[str] = None
+        image_url: Optional[str] = None,
+        author: Optional[str] = None
     ) -> Dict:
         """Save a verified community post to archive."""
         try:
@@ -330,6 +331,7 @@ class SupabaseClient:
                 "claims": claims,
                 "sources": sources,
                 "image_url": image_url,
+                "author": author,
                 "created_at": datetime.utcnow().isoformat(),
             }
             
