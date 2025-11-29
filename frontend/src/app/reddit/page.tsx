@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
-import { MessageSquare, ExternalLink, Code, Search, Archive, ShieldQuestion } from 'lucide-react';
+import { MessageSquare, ExternalLink, Code, Search, Archive, ShieldQuestion, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function RedditPage() {
@@ -214,6 +214,15 @@ function RedditCard({ item, index, isArchive = false }: { item: any, index: numb
                     <span className="text-xs text-gray-500">
                         {item.created_at ? new Date(item.created_at * (item.created_at > 10000000000 ? 1 : 1000)).toLocaleDateString() : 'Unknown date'}
                     </span>
+                    {isArchive && item.verdict !== undefined && (
+                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border ${item.verdict
+                                ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                            }`}>
+                            {item.verdict ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
+                            {item.verdict ? 'TRUE' : 'FALSE'}
+                        </span>
+                    )}
                 </div>
 
                 {/* Collapsed View Title */}
