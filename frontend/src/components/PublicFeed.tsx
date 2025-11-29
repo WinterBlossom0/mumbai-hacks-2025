@@ -290,6 +290,11 @@ function FeedCard({ item, index, currentUserEmail, onMoreClick }: {
 
 function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
     const [showJson, setShowJson] = useState(false);
+    const [upvotes, setUpvotes] = useState(item.upvotes || 0);
+    const [downvotes, setDownvotes] = useState(item.downvotes || 0);
+    const [userVote, setUserVote] = useState<number | null>(null);
+    const { user } = useUser();
+    const currentUserEmail = user?.primaryEmailAddress?.emailAddress;
 
     // Lock body scroll when modal is open
     useEffect(() => {
@@ -298,6 +303,43 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
             document.body.style.overflow = 'unset';
         };
     }, []);
+
+    const handleVote = async (voteType: number) => {
+        if (!currentUserEmail) {
+            alert('Please sign in to vote');
+            return;
+        }
+
+        try {
+            // Optimistic update
+            if (userVote === voteType) {
+                setUserVote(null);
+                if (voteType === 1) setUpvotes(upvotes - 1);
+                else setDownvotes(downvotes - 1);
+            } else {
+                if (userVote === 1) setUpvotes(upvotes - 1);
+                if (userVote === -1) setDownvotes(downvotes - 1);
+
+                setUserVote(voteType);
+                if (voteType === 1) setUpvotes(upvotes + 1);
+                else setDownvotes(downvotes + 1);
+            }
+
+            await fetchAPI('/api/vote', {
+                method: 'POST',
+                body: JSON.stringify({
+                    verification_id: item.id,
+                    user_id: currentUserEmail,
+                    vote_type: voteType
+                })
+            });
+        } catch (error) {
+            console.error('Vote failed:', error);
+            setUpvotes(item.upvotes || 0);
+            setDownvotes(item.downvotes || 0);
+            setUserVote(null);
+        }
+    };
 
     // Use Portal to render at document body level for perfect centering
     if (typeof window === 'undefined') return null;
@@ -442,11 +484,17 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
                 {/* Footer - Fixed */}
                 <div className="p-6 border-t border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-md">
                     <div className="flex items-center gap-6">
-                        <button className="flex items-center gap-2 text-gray-400 hover:text-cyan-400 transition-colors">
-                            <ThumbsUp className="w-5 h-5" /> {item.upvotes || 0}
+                        <button
+                            className={`flex items-center gap-2 transition-colors ${userVote === 1 ? 'text-cyan-400' : 'text-gray-400 hover:text-cyan-400'}`}
+                            onClick={() => handleVote(1)}
+                        >
+                            <ThumbsUp className="w-5 h-5" /> {upvotes}
                         </button>
-                        <button className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition-colors">
-                            <ThumbsDown className="w-5 h-5" /> {item.downvotes || 0}
+                        <button
+                            className={`flex items-center gap-2 transition-colors ${userVote === -1 ? 'text-red-400' : 'text-gray-400 hover:text-red-400'}`}
+                            onClick={() => handleVote(-1)}
+                        >
+                            <ThumbsDown className="w-5 h-5" /> {downvotes}
                         </button>
                     </div>
                     <button className="flex items-center gap-2 text-cyan-400 hover:text-white transition-colors">
