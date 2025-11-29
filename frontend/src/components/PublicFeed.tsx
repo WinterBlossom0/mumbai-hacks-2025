@@ -484,18 +484,33 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
                 {/* Footer - Fixed */}
                 <div className="p-6 border-t border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-md">
                     <div className="flex items-center gap-6">
-                        <button
-                            className={`flex items-center gap-2 transition-colors ${userVote === 1 ? 'text-cyan-400' : 'text-gray-400 hover:text-cyan-400'}`}
-                            onClick={() => handleVote(1)}
-                        >
-                            <ThumbsUp className="w-5 h-5" /> {upvotes}
-                        </button>
-                        <button
-                            className={`flex items-center gap-2 transition-colors ${userVote === -1 ? 'text-red-400' : 'text-gray-400 hover:text-red-400'}`}
-                            onClick={() => handleVote(-1)}
-                        >
-                            <ThumbsDown className="w-5 h-5" /> {downvotes}
-                        </button>
+                        {currentUserEmail && item.user_email === currentUserEmail ? (
+                            // Show only counts for own posts
+                            <>
+                                <div className="text-gray-400">
+                                    <span className="text-cyan-400 font-semibold">{upvotes}</span> upvotes
+                                </div>
+                                <div className="text-gray-400">
+                                    <span className="text-red-400 font-semibold">{downvotes}</span> downvotes
+                                </div>
+                            </>
+                        ) : (
+                            // Show interactive buttons for others' posts
+                            <>
+                                <button
+                                    className={`flex items-center gap-2 transition-colors ${userVote === 1 ? 'text-cyan-400' : 'text-gray-400 hover:text-cyan-400'}`}
+                                    onClick={() => handleVote(1)}
+                                >
+                                    <ThumbsUp className="w-5 h-5" /> {upvotes}
+                                </button>
+                                <button
+                                    className={`flex items-center gap-2 transition-colors ${userVote === -1 ? 'text-red-400' : 'text-gray-400 hover:text-red-400'}`}
+                                    onClick={() => handleVote(-1)}
+                                >
+                                    <ThumbsDown className="w-5 h-5" /> {downvotes}
+                                </button>
+                            </>
+                        )}
                     </div>
                     <button className="flex items-center gap-2 text-cyan-400 hover:text-white transition-colors">
                         <Share2 className="w-5 h-5" /> Share Analysis
