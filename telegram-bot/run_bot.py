@@ -6,8 +6,9 @@ Standalone runner script for the Truth Lens Telegram Bot.
 import sys
 from pathlib import Path
 
-# Add current directory to path for local backend imports
-sys.path.insert(0, str(Path(__file__).parent))
+# Add backend directory to path (parent directory)
+backend_dir = Path(__file__).parent.parent / "backend"
+sys.path.insert(0, str(backend_dir))
 
 from bot.telegram_bot import TruthLensBot
 from health_server import start_health_server

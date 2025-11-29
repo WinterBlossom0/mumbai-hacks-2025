@@ -19,20 +19,19 @@ from telegram.ext import (
     ContextTypes,
 )
 
-# Add current directory to path for local backend imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add backend directory to path (go up two levels: bot/ -> telegram-bot/ -> project root -> backend/)
+backend_dir = Path(__file__).parent.parent.parent / "backend"
+sys.path.insert(0, str(backend_dir))
 
-from backend.main.claim_extractor import ClaimExtractor
-from backend.main.claim_discoverer import ClaimDiscoverer
-from backend.main.reasoning import ClaimReasoner
-from backend.database.supabase_client import SupabaseClient
+from main.claim_extractor import ClaimExtractor
+from main.claim_discoverer import ClaimDiscoverer
+from main.reasoning import ClaimReasoner
+from database.supabase_client import SupabaseClient
 from bot.announcement_service import AnnouncementService
 
 
-# Load .env from telegram-bot directory or parent
-env_path = Path(__file__).parent.parent / ".env"
-if not env_path.exists():
-    env_path = Path(__file__).parent.parent.parent / ".env"
+# Load .env from project root (go up two levels: bot/ -> telegram-bot/ -> project root)
+env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Configure logging

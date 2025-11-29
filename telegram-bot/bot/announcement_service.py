@@ -17,15 +17,14 @@ from telegram import Bot
 from telegram.error import TelegramError, RetryAfter, TimedOut
 from telegram.helpers import escape_markdown
 
-# Add current directory to path for local backend imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add backend directory to path (go up two levels: bot/ -> telegram-bot/ -> project root -> backend/)
+backend_dir = Path(__file__).parent.parent.parent / "backend"
+sys.path.insert(0, str(backend_dir))
 
-from backend.database.supabase_client import SupabaseClient
+from database.supabase_client import SupabaseClient
 
-# Load .env from telegram-bot directory or parent
-env_path = Path(__file__).parent.parent / ".env"
-if not env_path.exists():
-    env_path = Path(__file__).parent.parent.parent / ".env"
+# Load .env from project root (go up two levels: bot/ -> telegram-bot/ -> project root)
+env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 # Configure logging
