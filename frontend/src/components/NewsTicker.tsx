@@ -10,10 +10,13 @@ interface NewsItem {
     verdict: boolean;
     reasoning: string;
     claims: string[];
+    sources?: Record<string, string[]>;
     user_email: string;
     created_at: string;
     upvotes: number;
     downvotes: number;
+    category?: string;
+    image_url?: string;
 }
 
 export default function NewsTicker({ onArticleClick }: { onArticleClick: (item: NewsItem) => void }) {
