@@ -46,7 +46,7 @@ def start_backend():
     )
     
     # Start thread to print backend output
-    thread = threading.Thread(target=print_output, args=(backend_process, "BACKEND"))
+    thread = threading.Thread(target=print_output, args=(backend_process, "BACKEND"), daemon=True)
     thread.start()
     output_threads.append(thread)
     
@@ -57,9 +57,11 @@ def start_frontend():
     print("Starting frontend server...")
     frontend_dir = Path(__file__).parent / "frontend"
     
-    # Start simple HTTP server
+    # Start Next.js dev server
+    npm_cmd = "npm.cmd" if os.name == "nt" else "npm"
+    
     frontend_process = subprocess.Popen(
-        [sys.executable, "-m", "http.server", "3000"],
+        [npm_cmd, "run", "dev"],
         cwd=frontend_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -68,7 +70,7 @@ def start_frontend():
     )
     
     # Start thread to print frontend output
-    thread = threading.Thread(target=print_output, args=(frontend_process, "FRONTEND"))
+    thread = threading.Thread(target=print_output, args=(frontend_process, "FRONTEND"), daemon=True)
     thread.start()
     output_threads.append(thread)
     
@@ -95,7 +97,7 @@ def start_reddit_monitor():
     )
     
     # Start thread to print monitor output
-    thread = threading.Thread(target=print_output, args=(monitor_process, "REDDIT"))
+    thread = threading.Thread(target=print_output, args=(monitor_process, "REDDIT"), daemon=True)
     thread.start()
     output_threads.append(thread)
     
@@ -106,12 +108,14 @@ def wait_for_server(url, timeout=30):
     import urllib.request
     import urllib.error
     
+    import socket
+    
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
-            urllib.request.urlopen(url, timeout=1)
+            urllib.request.urlopen(url, timeout=2)
             return True
-        except (urllib.error.URLError, ConnectionRefusedError):
+        except (urllib.error.URLError, ConnectionRefusedError, TimeoutError, socket.timeout):
             time.sleep(0.5)
     return False
 

@@ -149,7 +149,7 @@ class SupabaseClient:
             print(f"Error fetching public feed from Supabase: {e}")
             return []
     
-    def toggle_public_status(self, verification_id: str, is_public: bool, headline: Optional[str] = None, category: Optional[str] = None) -> bool:
+    def toggle_public_status(self, verification_id: str, is_public: bool, headline: Optional[str] = None, category: Optional[str] = None, image_url: Optional[str] = None) -> bool:
         """
         Toggle the public status of a verification.
         
@@ -158,6 +158,7 @@ class SupabaseClient:
             is_public: New public status
             headline: Optional headline to set
             category: Optional category to set
+            image_url: Optional image URL to set
             
         Returns:
             True if successful, False otherwise
@@ -168,6 +169,8 @@ class SupabaseClient:
                 data["headline"] = headline
             if category:
                 data["category"] = category
+            if image_url:
+                data["image_url"] = image_url
 
             result = (
                 self.client.table("verifications")
