@@ -85,9 +85,32 @@ function renderSegments(segments: Segment[]) {
     });
 }
 
+const CLASSIFIED_INPUT_SENTINEL = '__CLASSIFIED_INPUT__';
+
+function renderParagraphs(text: string, paragraphClassName: string) {
+    return text.split('\n').map((paragraph, i) => {
+        if (!paragraph.trim()) return null;
+        const segments = parseSegments(paragraph);
+        return (
+            <div key={i} className={paragraphClassName}>
+                {renderSegments(segments)}
+            </div>
+        );
+    });
+}
+
 interface ReasoningTextProps {
     reasoning: string;
     paragraphClassName?: string;
+}
+
+function splitReasoning(reasoning: string) {
+    const idx = reasoning.indexOf(CLASSIFIED_INPUT_SENTINEL);
+    if (idx === -1) return { reasoningPart: reasoning, classifiedPart: '' };
+    return {
+        reasoningPart: reasoning.slice(0, idx).trim(),
+        classifiedPart: reasoning.slice(idx + CLASSIFIED_INPUT_SENTINEL.length).trim(),
+    };
 }
 
 export default function ReasoningText({
@@ -95,18 +118,47 @@ export default function ReasoningText({
     paragraphClassName = 'bg-white/5 p-3 rounded-lg border border-white/5 text-gray-300 text-sm leading-relaxed',
 }: ReasoningTextProps) {
     if (!reasoning) return null;
-
+    const { reasoningPart } = splitReasoning(reasoning);
     return (
         <div className="space-y-3">
-            {reasoning.split('\n').map((paragraph, i) => {
-                if (!paragraph.trim()) return null;
-                const segments = parseSegments(paragraph);
-                return (
-                    <div key={i} className={paragraphClassName}>
-                        {renderSegments(segments)}
-                    </div>
-                );
-            })}
+            {renderParagraphs(reasoningPart || reasoning, paragraphClassName)}
+        </div>
+    );
+}
+
+interface ClassifiedInputProps {
+    reasoning: string;
+}
+
+export function ClassifiedInput({ reasoning }: ClassifiedInputProps) {
+    if (!reasoning) return null;
+    const { classifiedPart } = splitReasoning(reasoning);
+    if (!classifiedPart) return null;
+
+    return (
+        <div className="glass-panel p-4">
+            <p className="text-sm leading-loose">
+                {classifiedPart.split('\n').map((sentence, i) => {
+                    if (!sentence.trim()) return null;
+                    const segments = parseSegments(sentence);
+                    const typed = segments.find(s => s.type !== 'text');
+                    const text = segments.map(s => s.content).join('').trim();
+                    if (!text) return null;
+                    return (
+                        <span
+                            key={i}
+                            className={`rounded px-0.5 mx-0.5 ${
+                                typed?.type === 'true'        ? 'bg-green-500/20  text-green-100' :
+                                typed?.type === 'false'       ? 'bg-red-500/20    text-red-100' :
+                                typed?.type === 'unconfirmed' ? 'bg-yellow-500/20 text-yellow-100' :
+                                'text-gray-400'
+                            }`}
+                        >
+                            {text}{' '}
+                        </span>
+                    );
+                })}
+            </p>
         </div>
     );
 }

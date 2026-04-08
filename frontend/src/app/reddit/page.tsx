@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { MessageSquare, ExternalLink, Code, Search, Archive, ShieldQuestion, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import ReasoningText from '@/components/ReasoningText';
+import ReasoningText, { ClassifiedInput } from '@/components/ReasoningText';
 
 export default function RedditPage() {
     const [activeTab, setActiveTab] = useState<'eyeoftruth' | 'community' | 'archive'>('eyeoftruth');
@@ -291,6 +291,8 @@ function RedditCard({ item, index, isArchive = false }: { item: any, index: numb
                                         />
                                     </div>
                                 )}
+
+                                {item.reasoning && <ClassifiedInput reasoning={item.reasoning} />}
 
                                 {/* Show Claims only if they exist (verified posts) */}
                                 {item.claims && item.claims.length > 0 && (

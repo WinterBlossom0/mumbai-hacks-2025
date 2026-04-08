@@ -57,7 +57,7 @@ class Summarizer:
         self.llm = ChatOpenAI(
             model=model_name,
             openai_api_key=settings.OPENAI_API_KEY,
-            reasoning_effort="medium",
+            temperature=0,
         )
         try:
             self._enc = tiktoken.encoding_for_model("gpt-4")

@@ -27,13 +27,10 @@ class ClaimReasoner:
             model: The model to use (default: BIG_MODEL from settings)
         """
         model_name = model or settings.BIG_MODEL
-        # reasoning_effort is supported by gpt-5.4 and o-series models.
-        # xhigh = maximum reasoning depth — best for fact-checking accuracy.
-        # temperature is not supported on reasoning models; omit it.
         self.llm = ChatOpenAI(
             model=model_name,
             openai_api_key=settings.OPENAI_API_KEY,
-            reasoning_effort="xhigh",
+            temperature=0,
         )
         
         # Inline highlight markers — embedded in REASONING text around each claim mention.
@@ -50,7 +47,10 @@ class ClaimReasoner:
             ("system", "You are a STRICT fact-checker with ZERO tolerance for numerical inaccuracies or information manipulation. Your primary duty is to catch false numbers and manipulated information."),
             ("user", """You are a STRICT fact-checking expert. Your job is to REJECT any claims with incorrect numbers or manipulated information.
 
-USER CLAIMS:
+ORIGINAL USER TEXT (for CLASSIFIED_INPUT section):
+{original_text}
+
+EXTRACTED CLAIMS:
 {user_claims_text}
 
 EVIDENCE FROM CREDIBLE SOURCES:
@@ -110,32 +110,50 @@ These markers will be used to highlight the text in green/red/yellow on the fron
 Wrap the EXACT claim phrase (or a key part of it) — not your commentary around it.
 You may highlight multiple claims per sentence. Do NOT use these markers anywhere outside REASONING.
 
+CLASSIFIED INPUT SECTION:
+After REASONING, reproduce the ORIGINAL USER TEXT sentence by sentence.
+For EACH sentence, wrap it with the same markers based on your verdict:
+  - Sentence confirmed true:       ««TRUE_START»»sentence««TRUE_END»»
+  - Sentence confirmed false:      ««FALSE_START»»sentence««FALSE_END»»
+  - Sentence unconfirmed/unclear:  ««UNCONFIRMED_START»»sentence««UNCONFIRMED_END»»
+Do NOT paraphrase — use the EXACT original sentence text inside the markers.
+Every sentence must get exactly one marker pair.
+
 Provide your response in this EXACT format (do not deviate):
 VERDICT: [True/False]
-REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote specific evidence. Wrap each claim mention with the appropriate inline markers as instructed above.]""")
+REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote specific evidence. Wrap each claim mention with the appropriate inline markers as instructed above.]
+CLASSIFIED_INPUT: [The original user text reproduced sentence-by-sentence, each sentence wrapped in one marker pair as instructed above.]""")
         ])
+
+        self.CLASSIFIED_INPUT_SENTINEL = "__CLASSIFIED_INPUT__"
 
         self.output_parser = StrOutputParser()
 
     def reason_all_claims(
-        self, user_claims: List[str], all_website_claims: Dict[str, List[str]]
+        self, user_claims: List[str], all_website_claims: Dict[str, List[str]],
+        original_text: str = ""
     ) -> Dict[str, any]:
         """
         Reason about ALL user claims based on ALL website evidence.
 
+        Args:
+            user_claims: Extracted claims list.
+            all_website_claims: Evidence from scraped sources.
+            original_text: The raw original user input. Used for the CLASSIFIED_INPUT
+                           section — each sentence is reproduced with inline markers.
+
         Returns:
             {
               'verdict':   bool,
-              'reasoning': str  — plain text with inline highlight markers embedded:
-                               ««TRUE_START»»...««TRUE_END»»
-                               ««FALSE_START»»...««FALSE_END»»
-                               ««UNCONFIRMED_START»»...««UNCONFIRMED_END»»
+              'reasoning': str  — reasoning text with inline markers, followed by
+                               __CLASSIFIED_INPUT__ sentinel, followed by the original
+                               text with per-sentence inline markers. Frontend splits
+                               on the sentinel to render both sections.
             }
 
         IMPACT TRACE:
-          reasoning is stored verbatim in DB; frontend ReasoningText component
-          parses the inline markers to render coloured highlights.
-          No schema change needed — markers live inside the existing text field.
+          reasoning is stored verbatim in DB (single field, no schema change).
+          Frontend ReasoningText splits on __CLASSIFIED_INPUT__ and renders both.
         """
         user_claims_text = "\n".join([f"{i+1}. {claim}" for i, claim in enumerate(user_claims)])
 
@@ -149,31 +167,49 @@ REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote s
         try:
             chain = self.reasoning_prompt | self.llm | self.output_parser
             response_text = chain.invoke({
+                "original_text": original_text or "\n".join(user_claims),
                 "user_claims_text": user_claims_text,
                 "website_evidence_text": website_evidence_text
             }).strip()
 
             verdict = None
             reasoning_lines = []
-            in_reasoning = False
+            classified_input_lines = []
+            section = None  # 'reasoning' | 'classified'
 
             for line in response_text.split("\n"):
                 upper = line.upper().strip()
                 if upper.startswith("VERDICT:"):
                     verdict_text = line.split(":", 1)[1].strip().lower()
                     verdict = "true" in verdict_text
-                    in_reasoning = False
+                    section = None
                 elif upper.startswith("REASONING:"):
-                    in_reasoning = True
+                    section = "reasoning"
                     tail = line.split(":", 1)[1].strip()
                     if tail:
                         reasoning_lines.append(tail)
-                elif in_reasoning:
+                elif upper.startswith("CLASSIFIED_INPUT:"):
+                    section = "classified"
+                    tail = line.split(":", 1)[1].strip()
+                    if tail:
+                        classified_input_lines.append(tail)
+                elif section == "reasoning":
                     reasoning_lines.append(line)
+                elif section == "classified":
+                    classified_input_lines.append(line)
+
+            reasoning = "\n".join(reasoning_lines).strip()
+            classified_input = "\n".join(classified_input_lines).strip()
+
+            # Concat both into the reasoning field separated by a sentinel.
+            # No new DB column needed — frontend splits on the sentinel.
+            combined = reasoning
+            if classified_input:
+                combined = reasoning + "\n" + self.CLASSIFIED_INPUT_SENTINEL + "\n" + classified_input
 
             return {
                 "verdict": verdict,
-                "reasoning": "\n".join(reasoning_lines).strip(),
+                "reasoning": combined,
             }
         except Exception as e:
             print(f"Error reasoning about claim: {e}")

@@ -7,7 +7,7 @@ import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import ClaimsList from '@/components/ClaimsList';
-import ReasoningText from '@/components/ReasoningText';
+import ReasoningText, { ClassifiedInput } from '@/components/ReasoningText';
 
 function VerifyContent() {
     const [inputType, setInputType] = useState<'text' | 'url'>('text');
@@ -189,6 +189,8 @@ function VerifyContent() {
                                 <ClaimsList claims={result.claims} />
                             </div>
                         </div>
+
+                        <ClassifiedInput reasoning={result.reasoning} />
 
                         {/* Sources */}
                         <div className="glass-panel p-6">

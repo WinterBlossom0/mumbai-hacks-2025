@@ -47,7 +47,8 @@ class SupabaseClient:
             input_content: The original input (text or URL)
             input_type: Type of input ("text" or "url")
             verdict: True/False verdict
-            reasoning: AI reasoning for the verdict
+            reasoning: AI reasoning for the verdict with inline markers and
+                       __CLASSIFIED_INPUT__ sentinel + per-sentence classified text appended
             claims: List of extracted claims
             sources: Dictionary of sources found
             

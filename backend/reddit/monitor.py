@@ -185,7 +185,7 @@ class RedditMonitor:
             website_claims_flat = {}
 
         # 5. Reason
-        verdict_data = reasoner.reason_all_claims(claims, website_claims_flat or sources)
+        verdict_data = reasoner.reason_all_claims(claims, website_claims_flat or sources, original_text=raw_text)
         verdict = verdict_data["verdict"]
         reasoning = verdict_data["reasoning"]
 

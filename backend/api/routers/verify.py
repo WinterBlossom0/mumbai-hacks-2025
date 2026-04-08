@@ -117,7 +117,7 @@ async def verify_content(request: VerifyRequest):
             raise HTTPException(status_code=400, detail="No credible sources found for verification.")
 
         reasoner = ClaimReasoner()
-        final_result = reasoner.reason_all_claims(result["user"], all_website_claims_flat)
+        final_result = reasoner.reason_all_claims(result["user"], all_website_claims_flat, original_text=raw_text)
         # Coerce None → False so Pydantic bool field never rejects the response
         if final_result.get("verdict") is None:
             final_result["verdict"] = False

@@ -59,7 +59,7 @@ class ClaimRewriter:
         self.llm = ChatOpenAI(
             model=model_name,
             openai_api_key=settings.OPENAI_API_KEY,
-            reasoning_effort="medium",
+            temperature=0,
         )
 
         self._prompt = ChatPromptTemplate.from_messages([

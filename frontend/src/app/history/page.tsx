@@ -6,7 +6,7 @@ import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Lock, Globe, Code } from 'lucide-react';
 import ClaimsList from '@/components/ClaimsList';
-import ReasoningText from '@/components/ReasoningText';
+import ReasoningText, { ClassifiedInput } from '@/components/ReasoningText';
 
 export default function HistoryPage() {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -149,6 +149,7 @@ function HistoryItem({ item, index, onTogglePublic }: { item: any, index: number
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">AI Analysis</h4>
                                 <ReasoningText reasoning={item.reasoning} />
                             </div>
+                            <ClassifiedInput reasoning={item.reasoning} />
                             <div>
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">Key Claims</h4>
                                 <ClaimsList claims={item.claims} compact />
