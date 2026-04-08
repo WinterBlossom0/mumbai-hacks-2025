@@ -48,11 +48,11 @@ export default function NewsTicker({ onArticleClick }: { onArticleClick: (item: 
     if (chunk3.length === 0 && headlines.length > 0) chunk3 = headlines;
 
     const colors = [
-        'bg-cyan-500 shadow-cyan-500/50',
-        'bg-purple-500 shadow-purple-500/50',
-        'bg-rose-500 shadow-rose-500/50',
-        'bg-amber-500 shadow-amber-500/50',
-        'bg-emerald-500 shadow-emerald-500/50',
+        'bg-cyan-400/40',
+        'bg-purple-400/40',
+        'bg-rose-400/40',
+        'bg-amber-400/40',
+        'bg-emerald-400/40',
     ];
 
     const renderBand = (items: NewsItem[], direction: 'left' | 'right') => (
@@ -66,7 +66,7 @@ export default function NewsTicker({ onArticleClick }: { onArticleClick: (item: 
                         className="ticker-item"
                         onClick={() => onArticleClick(item)}
                     >
-                        <span className={`w-3 h-3 rounded-full mr-4 shrink-0 shadow-[0_0_15px] ${colorClass}`} />
+                        <span className={`w-2.5 h-2.5 rounded-full mr-4 shrink-0 ${colorClass}`} />
                         {item.headline || item.input_content.substring(0, 50) + '...'}
                     </div>
                 );
