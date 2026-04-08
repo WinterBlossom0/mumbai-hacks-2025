@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchAPI } from '@/lib/api';
 
 interface NewsItem {
@@ -19,6 +19,76 @@ interface NewsItem {
     image_url?: string;
 }
 
+const FONT = '900 1.5rem/1 "Inter", sans-serif';
+const LETTER_SPACING = 2;
+
+function GlassTickerItem({ text, colorClass, onClick }: { text: string; colorClass: string; onClick: () => void }) {
+    const glassLayerRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [itemWidth, setItemWidth] = useState(0);
+
+    useEffect(() => {
+        const container = containerRef.current;
+        const glassLayer = glassLayerRef.current;
+        if (!container || !glassLayer) return;
+
+        const h = container.offsetHeight || 40;
+        const dpr = window.devicePixelRatio || 1;
+
+        // Measure text width
+        const measureCanvas = document.createElement('canvas');
+        const mctx = measureCanvas.getContext('2d')!;
+        mctx.font = FONT;
+        (mctx as any).letterSpacing = `${LETTER_SPACING}px`;
+        const dotW = 24;
+        const measured = mctx.measureText(text.toUpperCase());
+        const w = Math.ceil(measured.width) + dotW + 40;
+
+        setItemWidth(w);
+
+        // Draw text mask
+        const canvas = document.createElement('canvas');
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+        const ctx = canvas.getContext('2d')!;
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+        ctx.font = FONT;
+        (ctx as any).letterSpacing = `${LETTER_SPACING}px`;
+        ctx.fillStyle = '#ffffff';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text.toUpperCase(), dotW + 8, h / 2);
+
+        const dataUrl = canvas.toDataURL();
+        glassLayer.style.webkitMaskImage = `url(${dataUrl})`;
+        (glassLayer.style as any).maskImage = `url(${dataUrl})`;
+        glassLayer.style.webkitMaskSize = `${w}px ${h}px`;
+        (glassLayer.style as any).maskSize = `${w}px ${h}px`;
+        glassLayer.style.webkitMaskRepeat = 'no-repeat';
+        (glassLayer.style as any).maskRepeat = 'no-repeat';
+    }, [text]);
+
+    return (
+        <div
+            ref={containerRef}
+            className="ticker-item-glass"
+            style={itemWidth ? { width: itemWidth } : undefined}
+            onClick={onClick}
+        >
+            {/* Coloured dot bullet */}
+            <span className={`ticker-dot ${colorClass}`} />
+
+            {/* Blurred glass layer masked to letter shapes */}
+            <div ref={glassLayerRef} className="ticker-glass-layer" />
+
+            {/* Outline-only text on top for the rim/edge of the glass letters */}
+            <span className="ticker-glass-text" aria-label={text}>
+                {text.toUpperCase()}
+            </span>
+        </div>
+    );
+}
+
 export default function NewsTicker({ onArticleClick }: { onArticleClick: (item: NewsItem) => void }) {
     const [headlines, setHeadlines] = useState<NewsItem[]>([]);
 
@@ -30,47 +100,29 @@ export default function NewsTicker({ onArticleClick }: { onArticleClick: (item: 
 
     if (headlines.length === 0) return null;
 
-    // Split headlines into 3 chunks for the 3 bands
     let chunk1: NewsItem[] = [], chunk2: NewsItem[] = [], chunk3: NewsItem[] = [];
-
     if (headlines.length >= 3) {
         chunk1 = headlines.slice(0, 3);
         chunk2 = headlines.slice(3, 6);
         chunk3 = headlines.slice(6, 9);
     } else {
-        chunk1 = headlines;
-        chunk2 = headlines;
-        chunk3 = headlines;
+        chunk1 = chunk2 = chunk3 = headlines;
     }
+    if (chunk2.length === 0) chunk2 = headlines;
+    if (chunk3.length === 0) chunk3 = headlines;
 
-    // Fallback if chunks are empty but we have headlines
-    if (chunk2.length === 0 && headlines.length > 0) chunk2 = headlines;
-    if (chunk3.length === 0 && headlines.length > 0) chunk3 = headlines;
-
-    const colors = [
-        'bg-cyan-400/40',
-        'bg-purple-400/40',
-        'bg-rose-400/40',
-        'bg-amber-400/40',
-        'bg-emerald-400/40',
-    ];
+    const dotColors = ['bg-cyan-400/50', 'bg-purple-400/50', 'bg-rose-400/50', 'bg-amber-400/50', 'bg-emerald-400/50'];
 
     const renderBand = (items: NewsItem[], direction: 'left' | 'right') => (
         <div className={`ticker-band ${direction}`}>
-            {/* Repeat items multiple times to ensure seamless scrolling */}
-            {[...items, ...items, ...items, ...items, ...items, ...items].map((item, i) => {
-                const colorClass = colors[i % colors.length];
-                return (
-                    <div
-                        key={`${item.id}-${i}`}
-                        className="ticker-item"
-                        onClick={() => onArticleClick(item)}
-                    >
-                        <span className={`w-2.5 h-2.5 rounded-full mr-4 shrink-0 ${colorClass}`} />
-                        {item.headline || item.input_content.substring(0, 50) + '...'}
-                    </div>
-                );
-            })}
+            {[...items, ...items, ...items, ...items, ...items, ...items].map((item, i) => (
+                <GlassTickerItem
+                    key={`${item.id}-${i}`}
+                    text={item.headline || item.input_content.substring(0, 50) + '...'}
+                    colorClass={dotColors[i % dotColors.length]}
+                    onClick={() => onArticleClick(item)}
+                />
+            ))}
         </div>
     );
 

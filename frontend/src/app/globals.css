@@ -262,7 +262,6 @@ button,
   text-transform: uppercase;
   letter-spacing: 2px;
   white-space: nowrap;
-
   color: rgba(200, 230, 255, 0.9);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
 }
@@ -271,6 +270,59 @@ button,
   color: #ffffff;
   transform: scale(1.05);
   text-shadow: 0 0 12px rgba(120, 200, 255, 0.6);
+}
+
+/* Glass ticker item wrapper */
+.ticker-item-glass {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 2rem;
+  cursor: pointer;
+  height: 2.4rem;
+  white-space: nowrap;
+  transition: transform 0.2s ease;
+}
+
+.ticker-item-glass:hover {
+  transform: scale(1.04);
+}
+
+/* Coloured dot */
+.ticker-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-right: 14px;
+}
+
+/* The backdrop-filter layer — masked to letter shapes by the canvas */
+.ticker-glass-layer {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(12px) brightness(1.4) saturate(1.6);
+  -webkit-backdrop-filter: blur(12px) brightness(1.4) saturate(1.6);
+  /* Canvas drawn on top masks this layer to text shape */
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+  mask-image: none;
+}
+
+/* Visible text layer: outline only, transparent fill = hollow glass rim */
+.ticker-glass-text {
+  position: relative;
+  z-index: 2;
+  font: 900 1.5rem/1 "Inter", sans-serif;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1px rgba(180, 225, 255, 0.85);
+  text-shadow:
+    0 -1px 0 rgba(255, 255, 255, 0.7),
+    0  1px 0 rgba(20, 60, 140, 0.5);
+  white-space: nowrap;
 }
 
 @keyframes scrollLeft {
