@@ -135,29 +135,44 @@ export function ClassifiedInput({ reasoning }: ClassifiedInputProps) {
     const { classifiedPart } = splitReasoning(reasoning);
     if (!classifiedPart) return null;
 
+    // Parse all sentences into {type, text} pairs
+    type SentenceChunk = { type: string; text: string };
+    const raw: SentenceChunk[] = classifiedPart.split('\n').flatMap(sentence => {
+        if (!sentence.trim()) return [];
+        const segments = parseSegments(sentence);
+        const typed = segments.find(s => s.type !== 'text');
+        const text = segments.map(s => s.content).join('').trim();
+        if (!text) return [];
+        return [{ type: typed?.type ?? 'text', text }];
+    });
+
+    // Merge consecutive same-type chunks
+    const merged: SentenceChunk[] = [];
+    for (const chunk of raw) {
+        const last = merged[merged.length - 1];
+        if (last && last.type === chunk.type) {
+            last.text += ' ' + chunk.text;
+        } else {
+            merged.push({ ...chunk });
+        }
+    }
+
     return (
         <div className="glass-panel p-4">
             <p className="text-sm leading-loose">
-                {classifiedPart.split('\n').map((sentence, i) => {
-                    if (!sentence.trim()) return null;
-                    const segments = parseSegments(sentence);
-                    const typed = segments.find(s => s.type !== 'text');
-                    const text = segments.map(s => s.content).join('').trim();
-                    if (!text) return null;
-                    return (
-                        <span
-                            key={i}
-                            className={`rounded px-0.5 mx-0.5 ${
-                                typed?.type === 'true'        ? 'bg-green-500/20  text-green-100' :
-                                typed?.type === 'false'       ? 'bg-red-500/20    text-red-100' :
-                                typed?.type === 'unconfirmed' ? 'bg-yellow-500/20 text-yellow-100' :
-                                'text-gray-400'
-                            }`}
-                        >
-                            {text}{' '}
-                        </span>
-                    );
-                })}
+                {merged.map((chunk, i) => (
+                    <span
+                        key={i}
+                        className={`rounded px-0.5 ${
+                            chunk.type === 'true'        ? 'bg-green-500/20  text-green-100' :
+                            chunk.type === 'false'       ? 'bg-red-500/20    text-red-100' :
+                            chunk.type === 'unconfirmed' ? 'bg-yellow-500/20 text-yellow-100' :
+                            'text-gray-400'
+                        }`}
+                    >
+                        {chunk.text}{' '}
+                    </span>
+                ))}
             </p>
         </div>
     );
