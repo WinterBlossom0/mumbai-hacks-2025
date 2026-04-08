@@ -37,6 +37,7 @@ class ClaimExtractor:
             model=model_name,
             openai_api_key=settings.OPENAI_API_KEY,
             temperature=0,
+            reasoning_effort="medium",
         )
         self.max_tokens_per_chunk = max_tokens_per_chunk
         self.encoding = tiktoken.encoding_for_model("gpt-4")

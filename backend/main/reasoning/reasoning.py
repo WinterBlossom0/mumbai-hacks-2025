@@ -31,6 +31,7 @@ class ClaimReasoner:
             model=model_name,
             openai_api_key=settings.OPENAI_API_KEY,
             temperature=0,
+            reasoning_effort="high",
         )
         
         # Inline highlight markers — embedded in REASONING text around each claim mention.
