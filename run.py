@@ -4,6 +4,15 @@ Main runner script for the Misinformation Detection System.
 Starts both the FastAPI backend, the Frontend server, and the Reddit Monitor.
 """
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  TEST MODE  (toggle here)
+#  True  → SMALL_MODEL stays gpt-5.4-nano, BIG_MODEL downgrades to gpt-5.4-mini
+#           Tavily returns only 1 result per query (fewer API credits)
+#           max 2 source URLs scraped per claim (faster turnaround)
+#  False → full production models and limits
+# ─────────────────────────────────────────────────────────────────────────────
+TEST_MODE = True
+
 import subprocess
 import webbrowser
 import time
@@ -11,6 +20,11 @@ import os
 import sys
 from pathlib import Path
 import threading
+
+# Prefer the project venv python; fall back to whatever runs this script
+_root = Path(__file__).parent
+_venv_python = _root / "venv" / "Scripts" / "python.exe"
+PYTHON = str(_venv_python) if _venv_python.exists() else sys.executable
 
 # Global stop event for threads
 stop_event = threading.Event()
@@ -30,6 +44,12 @@ def print_output(process, name):
     except:
         pass
 
+def _child_env() -> dict:
+    """Build env dict for child processes, injecting TEST_MODE."""
+    env = os.environ.copy()
+    env["TRUTH_LENS_TEST_MODE"] = "1" if TEST_MODE else "0"
+    return env
+
 def start_backend():
     """Start the FastAPI backend server."""
     print("Starting FastAPI backend server...")
@@ -37,12 +57,13 @@ def start_backend():
     
     # Start uvicorn
     backend_process = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
+        [PYTHON, "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"],
         cwd=backend_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        env=_child_env(),
     )
     
     # Start thread to print backend output
@@ -66,7 +87,8 @@ def start_frontend():
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        env=_child_env(),
     )
     
     # Start thread to print frontend output
@@ -88,12 +110,13 @@ def start_reddit_monitor():
 
     # Start monitor
     monitor_process = subprocess.Popen(
-        [sys.executable, "-u", "reddit/monitor.py"],
+        [PYTHON, "-u", "reddit/monitor.py"],
         cwd=backend_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        env=_child_env(),
     )
     
     # Start thread to print monitor output
@@ -174,6 +197,7 @@ def main():
         print("Backend API: http://localhost:8000")
         print("Frontend: http://localhost:3000")
         print("Reddit Monitor: Running")
+        print(f"Test Mode: {'ON  (gpt-5.4-mini everywhere, 1 Tavily result)' if TEST_MODE else 'OFF (full production models)'}")
         print()
         print("Press Ctrl+C to stop all servers")
         print("="*70)

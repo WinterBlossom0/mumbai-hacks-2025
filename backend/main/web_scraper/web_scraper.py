@@ -1,21 +1,24 @@
-import os
+import sys
 import requests
 from typing import Dict
-from dotenv import load_dotenv
 from pathlib import Path
 from bs4 import BeautifulSoup
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import settings
 
 
 class WebScraper:
     def __init__(self):
         """
         Initialize the WebScraper using Tavily API with BeautifulSoup fallback.
+
+        IMPACT TRACE:
+          Used by: ClaimExtractor._process_single_url, ClaimExtractor.extract_claims_from_url
+          Depends on: settings.TAVILY_API_KEY
+          If changed: affects all URL-based claim extraction paths
         """
-        self.api_key = os.getenv("TAVALY_API_KEY")
+        self.api_key = settings.TAVILY_API_KEY
         self.api_url = "https://api.tavily.com/extract"
 
     def scrape_with_beautifulsoup(self, url: str) -> Dict[str, str]:
@@ -72,12 +75,7 @@ class WebScraper:
         try:
             payload = {"api_key": self.api_key, "urls": [url]}
 
-            print(f"Sending request to Tavily extract API...")
             response = requests.post(self.api_url, json=payload)
-            
-            print(f"Response status: {response.status_code}")
-            print(f"Response: {response.text[:500]}")
-            
             response.raise_for_status()
 
             data = response.json()

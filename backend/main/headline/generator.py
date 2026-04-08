@@ -1,28 +1,35 @@
-import os
-from dotenv import load_dotenv
+import sys
 from pathlib import Path
 from typing import List
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import settings
+
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# Load .env
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
 
 class HeadlineGenerator:
-    def __init__(self, model: str = "gemini-2.5-flash"):
+    """
+    IMPACT TRACE:
+      Called by: api/routers/verify.py (toggle-public), reddit/monitor.py
+      Depends on: settings.SMALL_MODEL, settings.OPENAI_API_KEY
+      If changed: headline column in verifications + reddit_posts tables is affected
+    """
+
+    def __init__(self, model: str = None):
         """
-        Initialize the HeadlineGenerator using LangChain with Gemini API.
-        
+        Initialize the HeadlineGenerator using LangChain with OpenAI.
+
         Args:
-            model: The Gemini model to use (default: gemini-2.5-flash)
+            model: The model to use (default: SMALL_MODEL from settings)
         """
-        self.llm = ChatGoogleGenerativeAI(
-            model=model,
-            google_api_key=os.getenv("GEMINI_API_KEY"),
-            temperature=0.7
+        model_name = model or settings.SMALL_MODEL
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=settings.OPENAI_API_KEY,
+            reasoning_effort="medium",
         )
         
         self.headline_prompt = ChatPromptTemplate.from_messages([

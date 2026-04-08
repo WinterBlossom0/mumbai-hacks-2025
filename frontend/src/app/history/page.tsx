@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 import { CheckCircle, AlertCircle, ChevronDown, ChevronUp, Lock, Globe, Code } from 'lucide-react';
+import ClaimsList from '@/components/ClaimsList';
+import ReasoningText from '@/components/ReasoningText';
 
 export default function HistoryPage() {
     const { user, isLoaded, isSignedIn } = useUser();
@@ -145,31 +147,11 @@ function HistoryItem({ item, index, onTogglePublic }: { item: any, index: number
                             )}
                             <div>
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">AI Analysis</h4>
-                                <div className="space-y-3">
-                                    {item.reasoning.split('\n').map((paragraph: string, i: number) => (
-                                        paragraph.trim() && (
-                                            <div key={i} className="bg-white/5 p-3 rounded-lg border border-white/5 text-gray-300 text-sm leading-relaxed">
-                                                {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
-                                                    if (part.startsWith('**') && part.endsWith('**')) {
-                                                        return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
-                                                    }
-                                                    return part;
-                                                })}
-                                            </div>
-                                        )
-                                    ))}
-                                </div>
+                                <ReasoningText reasoning={item.reasoning} />
                             </div>
                             <div>
                                 <h4 className="text-cyan-400 text-sm font-bold mb-2">Key Claims</h4>
-                                <ul className="space-y-1">
-                                    {item.claims.map((claim: string, i: number) => (
-                                        <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
-                                            <span className="mt-1.5 w-1 h-1 rounded-full bg-gray-600" />
-                                            {claim}
-                                        </li>
-                                    ))}
-                                </ul>
+                                <ClaimsList claims={item.claims} compact />
                             </div>
 
                             {/* Sources Section */}

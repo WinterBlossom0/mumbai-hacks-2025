@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { MessageSquare, ExternalLink, Code, Search, Archive, ShieldQuestion, CheckCircle, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import ReasoningText from '@/components/ReasoningText';
 
 export default function RedditPage() {
     const [activeTab, setActiveTab] = useState<'eyeoftruth' | 'community' | 'archive'>('eyeoftruth');
@@ -19,6 +20,12 @@ export default function RedditPage() {
     useEffect(() => {
         loadRedditFeed();
         loadArchiveFeed();
+        // Poll every 15s so new posts appear as the monitor processes them
+        const interval = setInterval(() => {
+            loadRedditFeed();
+            loadArchiveFeed();
+        }, 15000);
+        return () => clearInterval(interval);
     }, []);
 
     async function loadRedditFeed() {
@@ -278,20 +285,10 @@ function RedditCard({ item, index, isArchive = false }: { item: any, index: numb
                                         <h4 className="text-cyan-400 font-bold mb-4 flex items-center gap-2 text-lg">
                                             <span>🤖</span> AI Analysis
                                         </h4>
-                                        <div className="space-y-4">
-                                            {item.reasoning.split('\n').map((paragraph: string, i: number) => (
-                                                paragraph.trim() && (
-                                                    <div key={i} className="bg-black/20 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed">
-                                                        {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
-                                                            if (part.startsWith('**') && part.endsWith('**')) {
-                                                                return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
-                                                            }
-                                                            return part;
-                                                        })}
-                                                    </div>
-                                                )
-                                            ))}
-                                        </div>
+                                        <ReasoningText
+                                            reasoning={item.reasoning}
+                                            paragraphClassName="bg-black/20 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed"
+                                        />
                                     </div>
                                 )}
 

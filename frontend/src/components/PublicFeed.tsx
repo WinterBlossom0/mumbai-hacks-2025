@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 import { ChevronRight, ThumbsUp, ThumbsDown, AlertCircle, CheckCircle, Eye, Share2, X, Code } from 'lucide-react';
+import ClaimsList from './ClaimsList';
+import ReasoningText from './ReasoningText';
 
 interface FeedItem {
     id: string;
@@ -393,34 +395,17 @@ function FeedModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
                         <h3 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
                             <span>🤖</span> AI Analysis
                         </h3>
-                        <div className="space-y-4">
-                            {item.reasoning.split('\n').map((paragraph, i) => (
-                                paragraph.trim() && (
-                                    <div key={i} className="bg-white/5 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed">
-                                        {paragraph.split(/(\*\*.*?\*\*)/).map((part, index) => {
-                                            if (part.startsWith('**') && part.endsWith('**')) {
-                                                return <strong key={index} className="text-white font-bold">{part.slice(2, -2)}</strong>;
-                                            }
-                                            return part;
-                                        })}
-                                    </div>
-                                )
-                            ))}
-                        </div>
+                        <ReasoningText
+                            reasoning={item.reasoning}
+                            paragraphClassName="bg-white/5 p-4 rounded-lg border border-white/5 text-gray-300 leading-relaxed"
+                        />
                     </div>
 
                     <div>
                         <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
                             <span>📌</span> Key Claims
                         </h3>
-                        <ul className="space-y-3">
-                            {item.claims.map((claim, i) => (
-                                <li key={i} className="flex items-start gap-3 text-gray-300 bg-black/20 p-4 rounded-lg border border-white/5">
-                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
-                                    {claim}
-                                </li>
-                            ))}
-                        </ul>
+                        <ClaimsList claims={item.claims} />
                     </div>
 
                     {/* Sources Section */}

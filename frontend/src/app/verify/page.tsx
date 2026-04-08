@@ -6,6 +6,8 @@ import { Send, Link as LinkIcon, FileText, AlertCircle, CheckCircle, Loader2, Co
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
+import ClaimsList from '@/components/ClaimsList';
+import ReasoningText from '@/components/ReasoningText';
 
 function VerifyContent() {
     const [inputType, setInputType] = useState<'text' | 'url'>('text');
@@ -174,29 +176,17 @@ function VerifyContent() {
                                 <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
                                     <span>🤖</span> AI Reasoning
                                 </h3>
-                                <div className="space-y-3">
-                                    {result.reasoning.split('\n').map((paragraph: string, i: number) => (
-                                        paragraph.trim() && (
-                                            <div key={i} className="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed">
-                                                {paragraph}
-                                            </div>
-                                        )
-                                    ))}
-                                </div>
+                                <ReasoningText
+                                    reasoning={result.reasoning}
+                                    paragraphClassName="bg-black/20 p-3 rounded-lg border border-white/5 text-gray-400 text-sm leading-relaxed"
+                                />
                             </div>
 
                             <div className="glass-panel p-6">
                                 <h3 className="text-cyan-400 font-bold mb-4 flex items-center gap-2">
                                     <span>📌</span> Key Claims
                                 </h3>
-                                <ul className="space-y-2">
-                                    {result.claims.map((claim: string, i: number) => (
-                                        <li key={i} className="text-gray-400 text-sm flex items-start gap-2">
-                                            <span className="mt-1.5 w-1 h-1 rounded-full bg-cyan-500/50" />
-                                            {claim}
-                                        </li>
-                                    ))}
-                                </ul>
+                                <ClaimsList claims={result.claims} />
                             </div>
                         </div>
 

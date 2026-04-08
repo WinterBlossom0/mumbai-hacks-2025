@@ -8,6 +8,7 @@ import { useUser } from '@clerk/nextjs';
 import CategoryFilter from '@/components/CategoryFilter';
 import PublicFeed from '@/components/PublicFeed';
 import NewsTicker from '@/components/NewsTicker';
+import ClaimsList from '@/components/ClaimsList';
 import { fetchAPI } from '@/lib/api';
 
 export default function Home() {
@@ -131,14 +132,7 @@ export default function Home() {
                                         <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
                                             <span>📌</span> Key Claims
                                         </h4>
-                                        <ul className="space-y-2">
-                                            {heroArticle.claims.map((claim: string, i: number) => (
-                                                <li key={i} className="flex items-start gap-2 text-gray-400">
-                                                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-cyan-500 flex-shrink-0" />
-                                                    {claim}
-                                                </li>
-                                            ))}
-                                        </ul>
+                                        <ClaimsList claims={heroArticle.claims} compact />
                                     </div>
                                 </div>
 

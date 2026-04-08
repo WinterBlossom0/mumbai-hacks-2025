@@ -1,31 +1,51 @@
-import os
+import sys
 from typing import List, Dict
-from dotenv import load_dotenv
 from pathlib import Path
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import settings
+
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
-
 
 class ClaimReasoner:
-    def __init__(self, model: str = "gemini-2.5-pro"):
+    """
+    IMPACT TRACE:
+      Called by: api/routers/verify.py, reddit/monitor.py
+      Depends on: settings.BIG_MODEL, settings.OPENAI_API_KEY
+      If changed: verdict + reasoning stored in DB changes; this is the FINAL step
+      Upstream inputs: user_claims (from ClaimExtractor), website_claims (from ClaimExtractor.extract_website_claims)
+    """
+
+    def __init__(self, model: str = None):
         """
-        Initialize the ClaimReasoner using LangChain with Gemini API.
+        Initialize the ClaimReasoner using LangChain with OpenAI.
 
         Args:
-            model: The Gemini model to use (default: gemini-2.5-pro)
+            model: The model to use (default: BIG_MODEL from settings)
         """
-        self.llm = ChatGoogleGenerativeAI(
-            model=model,
-            google_api_key=os.getenv("GEMINI_API_KEY"),
-            temperature=0
+        model_name = model or settings.BIG_MODEL
+        # reasoning_effort is supported by gpt-5.4 and o-series models.
+        # xhigh = maximum reasoning depth — best for fact-checking accuracy.
+        # temperature is not supported on reasoning models; omit it.
+        self.llm = ChatOpenAI(
+            model=model_name,
+            openai_api_key=settings.OPENAI_API_KEY,
+            reasoning_effort="xhigh",
         )
         
+        # Inline highlight markers — embedded in REASONING text around each claim mention.
+        # These are complex bracket sequences that cannot appear in natural language.
+        # Frontend parses them to render coloured highlights.
+        self.TRUE_START        = "««TRUE_START»»"
+        self.TRUE_END          = "««TRUE_END»»"
+        self.FALSE_START       = "««FALSE_START»»"
+        self.FALSE_END         = "««FALSE_END»»"
+        self.UNCONFIRMED_START = "««UNCONFIRMED_START»»"
+        self.UNCONFIRMED_END   = "««UNCONFIRMED_END»»"
+
         self.reasoning_prompt = ChatPromptTemplate.from_messages([
             ("system", "You are a STRICT fact-checker with ZERO tolerance for numerical inaccuracies or information manipulation. Your primary duty is to catch false numbers and manipulated information."),
             ("user", """You are a STRICT fact-checking expert. Your job is to REJECT any claims with incorrect numbers or manipulated information.
@@ -80,30 +100,45 @@ VERDICT RULES:
 
 **DEFAULT STANCE: Assume FALSE unless proven TRUE with solid evidence. Be strict but fair about close numerical matches.**
 
-Provide your response in this exact format:
+INLINE CLAIM HIGHLIGHTING:
+When you mention a specific user claim or key fact in your REASONING, wrap it with the appropriate markers:
+  - If confirmed true:    ««TRUE_START»»the claim text««TRUE_END»»
+  - If confirmed false:   ««FALSE_START»»the claim text««FALSE_END»»
+  - If unconfirmed:       ««UNCONFIRMED_START»»the claim text««UNCONFIRMED_END»»
+
+These markers will be used to highlight the text in green/red/yellow on the frontend.
+Wrap the EXACT claim phrase (or a key part of it) — not your commentary around it.
+You may highlight multiple claims per sentence. Do NOT use these markers anywhere outside REASONING.
+
+Provide your response in this EXACT format (do not deviate):
 VERDICT: [True/False]
-REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote specific evidence. If ANY number is wrong or unverified, explain why it's FALSE. Be explicit about manipulation if detected.]""")
+REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote specific evidence. Wrap each claim mention with the appropriate inline markers as instructed above.]""")
         ])
-        
+
         self.output_parser = StrOutputParser()
 
     def reason_all_claims(
         self, user_claims: List[str], all_website_claims: Dict[str, List[str]]
     ) -> Dict[str, any]:
         """
-        Use Gemini to reason about ALL user claims based on ALL website claims.
-
-        Args:
-            user_claims: List of all original claims made by the user
-            all_website_claims: Dictionary mapping URLs to their extracted claims
+        Reason about ALL user claims based on ALL website evidence.
 
         Returns:
-            Dictionary with 'verdict' (True/False) and 'reasoning' keys
+            {
+              'verdict':   bool,
+              'reasoning': str  — plain text with inline highlight markers embedded:
+                               ««TRUE_START»»...««TRUE_END»»
+                               ««FALSE_START»»...««FALSE_END»»
+                               ««UNCONFIRMED_START»»...««UNCONFIRMED_END»»
+            }
+
+        IMPACT TRACE:
+          reasoning is stored verbatim in DB; frontend ReasoningText component
+          parses the inline markers to render coloured highlights.
+          No schema change needed — markers live inside the existing text field.
         """
-        # Format user claims
         user_claims_text = "\n".join([f"{i+1}. {claim}" for i, claim in enumerate(user_claims)])
 
-        # Format website evidence
         website_evidence = []
         for url, claims in all_website_claims.items():
             website_evidence.append(f"\nSource: {url}")
@@ -112,27 +147,34 @@ REASONING: [State EXACTLY which numbers you verified or found incorrect. Quote s
         website_evidence_text = "\n".join(website_evidence)
 
         try:
-            # Create the chain
             chain = self.reasoning_prompt | self.llm | self.output_parser
-            
-            # Invoke the chain
             response_text = chain.invoke({
                 "user_claims_text": user_claims_text,
                 "website_evidence_text": website_evidence_text
-            })
-            
-            response_text = response_text.strip()
+            }).strip()
+
             verdict = None
-            reasoning = ""
-            lines = response_text.split("\n")
-            for i, line in enumerate(lines):
-                if line.upper().startswith("VERDICT:"):
+            reasoning_lines = []
+            in_reasoning = False
+
+            for line in response_text.split("\n"):
+                upper = line.upper().strip()
+                if upper.startswith("VERDICT:"):
                     verdict_text = line.split(":", 1)[1].strip().lower()
                     verdict = "true" in verdict_text
-                elif line.upper().startswith("REASONING:"):
-                    reasoning = "\n".join(lines[i + 1:]).strip()
-                    break
-            return {"verdict": verdict, "reasoning": reasoning}
+                    in_reasoning = False
+                elif upper.startswith("REASONING:"):
+                    in_reasoning = True
+                    tail = line.split(":", 1)[1].strip()
+                    if tail:
+                        reasoning_lines.append(tail)
+                elif in_reasoning:
+                    reasoning_lines.append(line)
+
+            return {
+                "verdict": verdict,
+                "reasoning": "\n".join(reasoning_lines).strip(),
+            }
         except Exception as e:
             print(f"Error reasoning about claim: {e}")
             return {"verdict": None, "reasoning": f"Error: {str(e)}"}

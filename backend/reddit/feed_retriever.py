@@ -1,23 +1,28 @@
-import os
+import sys
 import praw
-from dotenv import load_dotenv
 from pathlib import Path
 from typing import List, Dict, Any
 
-# Load environment variables
-env_path = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import settings
 
 
 class FeedRetriever:
-    """Retrieve posts from any subreddit."""
-    
+    """
+    Retrieve posts from any subreddit.
+
+    IMPACT TRACE:
+      Called by: api/routers/reddit.py (/api/reddit-community)
+      Depends on: settings.REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USER_AGENT
+      If changed: community Reddit browse page in frontend is affected
+    """
+
     def __init__(self):
         """Initialize Reddit API client."""
         self.reddit = praw.Reddit(
-            client_id=os.getenv("YOUR_CLIENT_ID"),
-            client_secret=os.getenv("YOUR_CLIENT_SECRET"),
-            user_agent=os.getenv("REDDIT_USER_AGENT", "TruthLens/1.0")
+            client_id=settings.REDDIT_CLIENT_ID,
+            client_secret=settings.REDDIT_CLIENT_SECRET,
+            user_agent=settings.REDDIT_USER_AGENT
         )
     
     def get_subreddit_posts(self, subreddit_name: str, limit: int = 10) -> List[Dict[str, Any]]:

@@ -1,25 +1,30 @@
-import os
-from supabase import create_client, Client
-from dotenv import load_dotenv
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from config import settings
+
+from supabase import create_client, Client
 
 
 class SupabaseClient:
+    """
+    IMPACT TRACE:
+      Called by: api/routers/verify.py, api/routers/history.py,
+                 api/routers/public.py, api/routers/reddit.py, reddit/monitor.py
+      Depends on: settings.SUPABASE_URL, settings.SUPABASE_KEY
+      Tables touched: verifications, ratings, reddit_posts, community_archives
+      If changed: all DB read/write across the entire app is affected
+    """
+
     def __init__(self):
         """Initialize Supabase client."""
-        url = os.getenv("SUPABASE_URL")
-        key = os.getenv("SUPABASE_KEY")
-        
-        if not url or not key:
+        if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
             raise ValueError("SUPABASE_URL and SUPABASE_KEY must be set in .env file")
-        
-        self.client: Client = create_client(url, key)
+
+        self.client: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
     
     def save_verification(
         self,
@@ -53,7 +58,7 @@ class SupabaseClient:
             data = {
                 "user_id": user_id,
                 "user_email": user_email,
-                "input_content": input_content[:10000],  # Limit to 10000 chars
+                "input_content": input_content[:10000],
                 "input_type": input_type,
                 "verdict": verdict,
                 "reasoning": reasoning,

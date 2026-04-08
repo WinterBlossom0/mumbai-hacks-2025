@@ -1,36 +1,42 @@
-import os
+import sys
 import tiktoken
 from typing import List, Dict
-from dotenv import load_dotenv
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import sys
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from web_scraper import WebScraper
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import settings
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
-
 
 class ClaimExtractor:
+    """
+    IMPACT TRACE:
+      Called by: api/routers/verify.py, reddit/monitor.py
+      Depends on: settings.SMALL_MODEL, settings.OPENAI_API_KEY, WebScraper
+      If changed: all claim lists fed into ClaimDiscoverer + ClaimReasoner change
+      Side-effects: uses ThreadPoolExecutor — concurrent OpenAI calls
+    """
+
     def __init__(self, model: str = None, max_tokens_per_chunk: int = 15000):
         """
         Initialize the ClaimExtractor.
-        
+
         Args:
-            model: The OpenAI model to use (default: from OPENAI_MODEL env variable)
+            model: The OpenAI model to use (default: SMALL_MODEL from settings)
             max_tokens_per_chunk: Maximum tokens per text chunk (default: 15000)
         """
-        model_name = model or os.getenv("OPENAI_MODEL")
+        model_name = model or settings.SMALL_MODEL
         self.llm = ChatOpenAI(
             model=model_name,
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            temperature=0
+            openai_api_key=settings.OPENAI_API_KEY,
+            reasoning_effort="medium",
         )
         self.max_tokens_per_chunk = max_tokens_per_chunk
         self.encoding = tiktoken.encoding_for_model("gpt-4")
@@ -190,13 +196,15 @@ Format: ["claim1", "claim2", "claim3"]""")
         
         if not scraped_data['content']:
             print(f"Failed to scrape content from {url}")
-            return {key_name: []}
+            return {key_name: [], "raw_text": ""}
         
         print(f"Successfully scraped {len(scraped_data['content'])} characters")
         print(f"Extracting claims from scraped content...\n")
         
         # Extract claims from the scraped content
-        return self.extract_claims(scraped_data['content'], key_name)
+        result = self.extract_claims(scraped_data['content'], key_name)
+        result["raw_text"] = scraped_data['content']
+        return result
     
     def extract_claims(self, text: str, key_name: str = "user") -> Dict[str, List[str]]:
         """
@@ -235,8 +243,8 @@ Format: ["claim1", "claim2", "claim3"]""")
                     print(f"Error processing chunk {chunk_num}: {e}")
         
         print(f"Total claims extracted: {len(all_claims)}")
-        
-        return {key_name: all_claims}
+
+        return {key_name: all_claims, "raw_text": text}
     
     def extract_website_claims(self, urls: List[str], original_claims: List[str]) -> Dict[str, List[str]]:
         """

@@ -1,30 +1,35 @@
-import os
+import sys
 from typing import List
-from dotenv import load_dotenv
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from config import settings
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 
-# Load .env from project root
-env_path = Path(__file__).parent.parent.parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
-
 
 class ClaimCategorizer:
+    """
+    IMPACT TRACE:
+      Called by: api/routers/verify.py (toggle-public), api/routers/public.py
+      Depends on: settings.SMALL_MODEL, settings.OPENAI_API_KEY
+      If changed: category column in verifications table is affected
+    """
+
     def __init__(self, model: str = None):
         """
         Initialize the ClaimCategorizer using LangChain with OpenAI.
 
         Args:
-            model: The OpenAI model to use (default: from OPENAI_MODEL env variable)
+            model: The OpenAI model to use (default: SMALL_MODEL from settings)
         """
-        model_name = model or os.getenv("OPENAI_MODEL")
+        model_name = model or settings.SMALL_MODEL
         self.llm = ChatOpenAI(
             model=model_name,
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            temperature=0
+            openai_api_key=settings.OPENAI_API_KEY,
+            reasoning_effort="medium",
         )
 
         self.categorization_prompt = ChatPromptTemplate.from_messages([
