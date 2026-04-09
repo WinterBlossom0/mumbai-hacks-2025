@@ -13,10 +13,41 @@ from langchain_core.output_parsers import StrOutputParser
 class ClaimReasoner:
     """
     IMPACT TRACE:
-      Called by: api/routers/verify.py, reddit/monitor.py
-      Depends on: settings.BIG_MODEL, settings.OPENAI_API_KEY
-      If changed: verdict + reasoning stored in DB changes; this is the FINAL step
-      Upstream inputs: user_claims (from ClaimExtractor), website_claims (from ClaimExtractor.extract_website_claims)
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     UPSTREAM (Receives data from)                      ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  • api/routers/verify.py  → reason_all_claims() at line ~138            ║
+    ║  • reddit/monitor.py      → reason_all_claims() at line ~188            ║
+    ║  • ClaimExtractor         → user_claims, raw_text                       ║
+    ║  • ClaimExtractor.extract_website_claims() → website_claims            ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     DOWNSTREAM (Sends data to)                         ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  • Returns: {verdict: bool, reasoning: str}                            ║
+    ║    ↓                                                                  ║
+    ║  • SupabaseClient.save_verification()   → reasoning field in DB          ║
+    ║  • SupabaseClient.save_reddit_post()    → reasoning field in DB        ║
+    ║    ↓                                                                  ║
+    ║  • ReasoningText.tsx                    → renders with markers         ║
+    ║  • ClassifiedInput.tsx                  → renders classified sentences   ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     MARKER FORMAT CONTRACT                             ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  Generates: ««TRUE_START»»...««TRUE_END»»                               ║
+    ║             ««FALSE_START»»...««FALSE_END»»                           ║
+    ║             ««UNCONFIRMED_START»»...««UNCONFIRMED_END»»                 ║
+    ║             __CLASSIFIED_INPUT__ sentinel                              ║
+    ║  Consumer:  ReasoningText.tsx parseSegments() must match these         ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    BREAKING CHANGES:
+      • Changing marker format → breaks ALL frontend rendering
+      • Changing prompt structure → affects verdict accuracy
+      • Removing CLASSIFIED_INPUT sentinel → breaks ClassifiedInput.tsx
     """
 
     def __init__(self, model: str = None):
@@ -113,10 +144,13 @@ You may highlight multiple claims per sentence. Do NOT use these markers anywher
 
 CLASSIFIED INPUT SECTION:
 After REASONING, reproduce the ORIGINAL USER TEXT sentence by sentence.
-For EACH sentence, wrap it with the same markers based on your verdict:
-  - Sentence confirmed true:       ««TRUE_START»»sentence««TRUE_END»»
-  - Sentence confirmed false:      ««FALSE_START»»sentence««FALSE_END»»
-  - Sentence unconfirmed/unclear:  ««UNCONFIRMED_START»»sentence««UNCONFIRMED_END»»
+For EACH sentence, classify it INDEPENDENTLY based on what claims it contains:
+  - Sentence contains ONLY true/verified claims:     ««TRUE_START»»sentence««TRUE_END»»
+  - Sentence contains ANY false/misleading claim:   ««FALSE_START»»sentence««FALSE_END»»
+  - Sentence has no specific claims OR claims can't be verified: ««UNCONFIRMED_START»»sentence««UNCONFIRMED_END»»
+
+IMPORTANT: A sentence with mixed true and false claims should be marked FALSE.
+A sentence with only true claims should be marked TRUE regardless of overall verdict.
 Do NOT paraphrase — use the EXACT original sentence text inside the markers.
 Every sentence must get exactly one marker pair.
 

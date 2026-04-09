@@ -1,5 +1,42 @@
 'use client';
 
+/**
+ * Reddit Page — browse verified posts and community subreddits.
+ *
+ * IMPACT TRACE:
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     UPSTREAM (Data Sources)                           ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • /api/reddit-posts       → Verified posts from r/eyeoftruth          ║
+ * ║  • /api/reddit-community   → Live subreddit browsing                   ║
+ * ║  • /api/community-archives → Archived community verifications          ║
+ * ║  • backend/reddit/monitor.py → Populates reddit-posts via polling       ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     DOWNSTREAM (Navigation Actions)                    ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • RedditCard "Verify?" button → /verify?text=...&reddit_id=...&auto=true ║
+ * ║    ↓                                                                  ║
+ * ║  • verify/page.tsx detects URL → auto-switches to URL pipeline         ║
+ * ║    ↓                                                                  ║
+ * ║  • After verification → saved to community_archives (via API)          ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     COMPONENT DEPENDENCIES                             ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • ReasoningText    → Renders AI analysis (from backend reasoning)      ║
+ * ║  • ClassifiedInput  → Renders highlighted user text with colors          ║
+ * ║  • fetchAPI         → Makes calls to all /api/* endpoints                ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * BREAKING CHANGES:
+ *   • Changing RedditCard verifyUrl format → breaks auto-verify flow
+ *   • Removing reasoning display → hides verification results
+ *   • Changing tab IDs → breaks URL-based tab navigation
+ */
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchAPI } from '@/lib/api';
@@ -203,7 +240,22 @@ function RedditCard({ item, index, isArchive = false }: { item: any, index: numb
     const [expanded, setExpanded] = useState(false);
 
     // Construct verify URL with all necessary params
-    const verifyUrl = `/verify?text=${encodeURIComponent(item.title + "\n" + (item.body || ""))}&reddit_id=${item.id}&subreddit=${item.subreddit || 'unknown'}&author=${item.author || 'unknown'}&auto=true`;
+    // Reddit link posts have 'url' pointing to external site, self posts have body text
+    // Priority: external URL > body with URL > title + body
+    let verifyText = item.body || '';
+
+    // If it's a link post (has external URL that's not reddit.com), use that URL
+    if (item.url && !item.url.includes('reddit.com') && !item.url.includes('redd.it')) {
+        verifyText = item.url + "\n" + verifyText;
+        console.log('[RedditCard] Link post detected, using external URL:', item.url);
+    } else if (item.body) {
+        console.log('[RedditCard] Self post with body, checking for URLs in body');
+    } else {
+        verifyText = item.title;
+        console.log('[RedditCard] No body or URL, using title only');
+    }
+
+    const verifyUrl = `/verify?text=${encodeURIComponent(item.title + "\n" + verifyText)}&reddit_id=${item.id}&subreddit=${item.subreddit || 'unknown'}&author=${item.author || 'unknown'}&auto=true`;
 
     return (
         <motion.div

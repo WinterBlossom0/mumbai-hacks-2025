@@ -20,10 +20,58 @@ from database.supabase_client import SupabaseClient
 class RedditMonitor:
     """
     IMPACT TRACE:
-      Entry point: run.py (subprocess), api/main.py (startup thread)
-      Depends on: settings.REDDIT_*, ClaimExtractor, ClaimDiscoverer,
-                  ClaimReasoner, HeadlineGenerator, SupabaseClient
-      If changed: affects auto-moderation of r/eyeoftruth and community_archives
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     UPSTREAM (Triggers this class)                     ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  • run.py              → subprocess.Popen() to start monitor            ║
+    ║  • api/main.py         → startup thread spawns monitor                 ║
+    ║  • Reddit API (praw)   → streaming new submissions from r/eyeoftruth   ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     DOWNSTREAM (Pipeline - Same as /api/verify)        ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  Step 1: ClaimExtractor.extract_claims() / extract_claims_from_url()    ║
+    ║          ↓ (same flow as verify.py, lines 92-141)                     ║
+    ║  Step 2: Summarizer.summarise()                                        ║
+    ║          ↓                                                            ║
+    ║  Step 3: ClaimRewriter.rewrite_claims()                                ║
+    ║          ↓                                                            ║
+    ║  Step 4: ClaimDiscoverer.discover_sources_from_queries()                ║
+    ║          ↓                                                            ║
+    ║  Step 5: ClaimExtractor.extract_website_claims()                       ║
+    ║          ↓                                                            ║
+    ║  Step 6: ClaimReasoner.reason_all_claims()  → verdict + reasoning        ║
+    ║          ↓                                                            ║
+    ║  Step 7: HeadlineGenerator.generate_headline()                         ║
+    ║          ↓                                                            ║
+    ║  Step 8: SupabaseClient.save_reddit_post()    → reddit_posts table      ║
+    ║          ↓                                                            ║
+    ║  Step 9: Reddit API → post.mod.remove() or post.mod.approve()         ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     SIDE EFFECTS & EXTERNAL IO                        ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  • Reddit API:     Reads posts, removes/approves posts (moderation)      ║
+    ║  • OpenAI API:     3+ calls (same as verify pipeline)                   ║
+    ║  • Tavily API:     Source discovery                                     ║
+    ║  • Web Scraping:  Fetches discovered URLs                              ║
+    ║  • Database:      Inserts to reddit_posts table                        ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║                     AFFECTED TABLES & FRONTEND                         ║
+    ╠══════════════════════════════════════════════════════════════════════╣
+    ║  • reddit_posts table    → read by /api/reddit-posts                   ║
+    ║  • frontend reddit/page  → displays posts from reddit_posts            ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+
+    BREAKING CHANGES:
+      • Changing handle_post() signature → breaks run.py caller
+      • Changing verdict logic → affects auto-moderation decisions
+      • Removing moderation → posts won't be removed/approved
+      • Changing ThreadPoolExecutor → may break concurrent processing
     """
 
     def __init__(self):

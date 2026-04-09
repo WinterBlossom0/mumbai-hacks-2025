@@ -12,9 +12,35 @@
  * Everything outside markers renders as normal grey text.
  *
  * IMPACT TRACE:
- *   Used by: verify/page.tsx, history/page.tsx, PublicFeed.tsx, reddit/page.tsx
- *   Depends on: reasoning string from /api/verify response (stored in DB as-is)
- *   If changed: all reasoning displays change simultaneously
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     UPSTREAM (What sends data here)                    ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • backend/api/routers/verify.py  → returns reasoning with markers     ║
+ * ║  • backend/main/reasoning/reasoning.py → generates TRUE/FALSE markers  ║
+ * ║  • Supabase DB → stores reasoning from past verifications             ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     DOWNSTREAM (Who uses this component)               ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • verify/page.tsx      → AI Reasoning section                         ║
+ * ║  • reddit/page.tsx      → RedditCard expanded AI Analysis              ║
+ * ║  • history/page.tsx     → Past verification details                  ║
+ * ║  • PublicFeed.tsx       → Public feed cards                          ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     DATA CONTRACT (Marker Format)                      ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  Input: reasoning string containing ««TYPE_START»»text««TYPE_END»»     ║
+ * ║  Output: React spans with colored backgrounds                         ║
+ * ║  Contract: Markers must be exact — any change breaks parsing           ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * BREAKING CHANGES:
+ *   • Changing marker format (e.g., «« to [[) → backend must also change
+ *   • Changing color classes → affects all verification displays
+ *   • Removing splitReasoning() → breaks ClassifiedInput component
  */
 
 const TRUE_START       = '««TRUE_START»»';

@@ -1,5 +1,48 @@
 'use client';
 
+/**
+ * Verify Page — manual and auto verification of text/URLs.
+ *
+ * IMPACT TRACE:
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     UPSTREAM (Data Sources)                           ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • User direct input → manual text/URL verification                    ║
+ * ║  • reddit/page.tsx   → ?text=...&reddit_id=...&auto=true (auto-verify) ║
+ * ║  • Clerk auth        → user_id, user_email for DB records              ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     DOWNSTREAM (API Calls)                             ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • POST /api/verify  → Main verification pipeline                      ║
+ * ║    Payload: {input_type, content, user_id, reddit_id?, subreddit?}    ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     AUTO-VERIFY FLOW (Reddit Integration)              ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  1. URL Detection: extractUrlFromText() scans for https:// in body     ║
+ * ║  2. Pipeline Switch: URL found → input_type='url', else 'text'        ║
+ * ║  3. API Call: fetchAPI('/api/verify') with detected type              ║
+ * ║  4. Archive: If reddit_id present → backend saves to community_archives ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * ╔══════════════════════════════════════════════════════════════════════╗
+ * ║                     COMPONENT DEPENDENCIES                             ║
+ * ╠══════════════════════════════════════════════════════════════════════╣
+ * ║  • ClaimsList       → Renders extracted claims                          ║
+ * ║  • ReasoningText    → Renders AI reasoning with highlights              ║
+ * ║  • ClassifiedInput  → Renders highlighted original text                 ║
+ * ║  • fetchAPI         → POST /api/verify                                  ║
+ * ╚══════════════════════════════════════════════════════════════════════╝
+ *
+ * BREAKING CHANGES:
+ *   • Changing URL detection regex → may miss valid URLs in Reddit posts
+ *   • Removing reddit_id from payload → breaks community archive linking
+ *   • Changing input_type values → backend verify.py must accept them
+ */
+
 import { useState, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Link as LinkIcon, FileText, AlertCircle, CheckCircle, Loader2, Code } from 'lucide-react';
@@ -21,23 +64,73 @@ function VerifyContent() {
 
     const [hasAutoVerified, setHasAutoVerified] = useState(false);
 
+    // Extract URL from text if present (for Reddit posts with link in body)
+    const extractUrlFromText = (text: string): { type: 'text' | 'url'; content: string } => {
+        console.log('[RedditAutoVerify] Checking for URL in text:', text.substring(0, 200));
+
+        // URL regex - matches http(s)://domain.com/path
+        const urlRegex = /https?:\/\/[a-zA-Z0-9][-a-zA-Z0-9]*\.[-a-zA-Z0-9.]+(?:\/[^\s\)\]\>\"\']*)?/i;
+
+        const match = text.match(urlRegex);
+        if (match) {
+            let url = match[0];
+            // Clean up trailing punctuation
+            url = url.replace(/[.,;!?]+$/, '');
+
+            // Validate it's a real URL
+            if (url.length > 10 && url.includes('.')) {
+                // Check if this is a LINK POST (URL is at the start, minimal other text)
+                // vs SELF POST (URL embedded in body text)
+                const textBeforeUrl = text.substring(0, text.indexOf(url)).trim();
+                const textAfterUrl = text.substring(text.indexOf(url) + url.length).trim();
+
+                // If URL is at the very beginning and there's little other content → LINK POST
+                const isLinkPost = textBeforeUrl.length === 0 && textAfterUrl.length < 100;
+
+                // If URL is embedded in substantial text → SELF POST, use text pipeline
+                const isEmbeddedUrl = textBeforeUrl.length > 20 || textAfterUrl.length > 100;
+
+                if (isLinkPost) {
+                    console.log('[RedditAutoVerify] LINK POST detected, using URL pipeline:', url);
+                    return { type: 'url', content: url };
+                } else if (isEmbeddedUrl) {
+                    console.log('[RedditAutoVerify] URL embedded in text, using TEXT pipeline. URL:', url);
+                    return { type: 'text', content: text };
+                } else {
+                    // Ambiguous case - default to text to preserve content
+                    console.log('[RedditAutoVerify] Ambiguous URL position, using TEXT pipeline');
+                    return { type: 'text', content: text };
+                }
+            }
+        }
+        console.log('[RedditAutoVerify] No URL detected, using TEXT pipeline');
+        return { type: 'text', content: text };
+    };
+
     useEffect(() => {
         const textParam = searchParams.get('text');
         const autoParam = searchParams.get('auto');
 
         if (textParam) {
-            setContent(textParam);
+            // Detect if content contains a URL (Reddit posts often have link in body)
+            const detected = extractUrlFromText(textParam);
+            setInputType(detected.type);
+            setContent(detected.content);
 
             if (autoParam === 'true' && !hasAutoVerified) {
                 setHasAutoVerified(true);
-                handleVerify(textParam);
+                console.log('[RedditAutoVerify] Auto-verifying with type:', detected.type);
+                handleVerify(detected.content, detected.type);
             }
         }
     }, [searchParams]);
 
-    const handleVerify = async (textOverride?: string) => {
+    const handleVerify = async (textOverride?: string, typeOverride?: 'text' | 'url') => {
         const textToVerify = textOverride || content;
+        const typeToUse = typeOverride || inputType;
         if (!textToVerify?.trim()) return;
+
+        console.log('[RedditAutoVerify] Starting verification:', { type: typeToUse, content: textToVerify.substring(0, 100) + '...' });
 
         setLoading(true);
         setError('');
@@ -48,18 +141,22 @@ function VerifyContent() {
         const author = searchParams.get('author');
 
         try {
+            const payload = {
+                input_type: typeToUse,
+                content: textToVerify,
+                user_id: user?.id || '0',
+                user_email: user?.primaryEmailAddress?.emailAddress || 'user0@gmail.com',
+                reddit_id: redditId,
+                subreddit: subreddit,
+                author: author
+            };
+            console.log('[RedditAutoVerify] API payload:', payload);
+
             const data = await fetchAPI('/api/verify', {
                 method: 'POST',
-                body: JSON.stringify({
-                    input_type: inputType,
-                    content: textToVerify,
-                    user_id: user?.id || '0',
-                    user_email: user?.primaryEmailAddress?.emailAddress || 'user0@gmail.com',
-                    reddit_id: redditId,
-                    subreddit: subreddit,
-                    author: author
-                })
+                body: JSON.stringify(payload)
             });
+            console.log('[RedditAutoVerify] API response:', { verdict: data.verdict, claimsCount: data.claims?.length });
             setResult(data);
         } catch (err: any) {
             setError(err.message || 'Verification failed');
