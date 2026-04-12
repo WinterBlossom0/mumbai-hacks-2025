@@ -67,6 +67,13 @@ IMPACT TRACE:
     • Removing reddit_id/subreddit/author params → breaks Reddit auto-verify flow
     • Changing pipeline order → affects all verification results
     • Changing save_community_archive() signature → breaks all callers
+    • Adding test_mode field → frontend must now send this (default: true)
+
+  NOTE ON TEST MODE:
+    • Previously: TEST_MODE set in run.py, passed via env var TRUTH_LENS_TEST_MODE
+    • Now: test_mode comes from frontend VerifyRequest (default true for safety)
+    • When test_mode=true: gpt-5.4-mini, Tavily max_results=1, max 2 URLs
+    • When test_mode=false: full gpt-5.4, full Tavily results (expensive!)
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -99,6 +106,7 @@ class VerifyRequest(BaseModel):
     reddit_id: Optional[str] = None
     subreddit: Optional[str] = None
     author: Optional[str] = None
+    test_mode: bool = True  # Default to test mode (safer/cheaper)
 
 
 class VerifyResponse(BaseModel):
@@ -132,14 +140,23 @@ async def verify_content(request: VerifyRequest):
     """Verify content (text or URL) for misinformation."""
     trace_id = f"verify_{int(time.time()*1000)}"
     try:
+        # Determine test mode settings from request (default True for safety)
+        test_mode = request.test_mode
+        tavily_max_urls = 2 if test_mode else 999
+        tavily_max_results = 1 if test_mode else 3
+
         log_trace("VERIFY_START", {
             "trace_id": trace_id,
             "input_type": request.input_type,
+            "test_mode": test_mode,
+            "tavily_max_urls": tavily_max_urls,
+            "tavily_max_results": tavily_max_results,
             "has_reddit_id": bool(request.reddit_id),
             "content_preview": request.content[:80] + "..." if len(request.content) > 80 else request.content
         })
         print(f"\n{'='*70}")
         print(f"Processing {request.input_type}: {request.content[:100]}...")
+        print(f"Test Mode: {'ON (gpt-5.4-mini, limited Tavily)' if test_mode else 'OFF (full models)'}")
         print(f"{'='*70}\n")
 
         extractor = ClaimExtractor(max_tokens_per_chunk=15000)
@@ -179,8 +196,8 @@ async def verify_content(request: VerifyRequest):
         sources = discoverer.discover_sources_from_queries(rewritten)
 
         all_urls = list(set(url for urls in sources.values() for url in urls))
-        all_urls = all_urls[:settings.TAVILY_MAX_URLS]  # capped to 2 in test mode
-        log_trace("STEP4_COMPLETE", {"sources_found": len(sources), "urls_capped": len(all_urls)})
+        all_urls = all_urls[:tavily_max_urls]  # capped based on test_mode from request
+        log_trace("STEP4_COMPLETE", {"sources_found": len(sources), "urls_capped": len(all_urls), "test_mode": test_mode})
         if not all_urls:
             log_trace("STEP4_FAILED", {"reason": "no_sources"})
             raise HTTPException(status_code=400, detail="No sources discovered. Please check your Tavily API key.")

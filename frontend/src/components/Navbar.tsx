@@ -6,6 +6,7 @@ import { UserButton, SignInButton, useUser } from '@clerk/nextjs';
 import { Home, Search, History, MessageSquare, Menu, X, Eye } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import TestModeToggle from './TestModeToggle';
 
 export default function Navbar() {
     const pathname = usePathname();
@@ -66,6 +67,11 @@ export default function Navbar() {
 
                     {/* Auth & Mobile Menu Button */}
                     <div className="flex items-center gap-4">
+                        {/* Test Mode Toggle - Desktop only */}
+                        <div className="hidden md:block">
+                            <TestModeToggle />
+                        </div>
+
                         {isLoaded && (
                             <div className="flex items-center cursor-hover">
                                 {isSignedIn ? (

@@ -16,7 +16,8 @@
  * ║                     DOWNSTREAM (API Calls)                             ║
  * ╠══════════════════════════════════════════════════════════════════════╣
  * ║  • POST /api/verify  → Main verification pipeline                      ║
- * ║    Payload: {input_type, content, user_id, reddit_id?, subreddit?}    ║
+ * ║    Payload: {input_type, content, user_id, reddit_id?, subreddit?,     ║
+ * ║              test_mode?}  ← defaults to TRUE (test mode ON)            ║
  * ╚══════════════════════════════════════════════════════════════════════╝
  *
  * ╔══════════════════════════════════════════════════════════════════════╗
@@ -49,6 +50,7 @@ import { Send, Link as LinkIcon, FileText, AlertCircle, CheckCircle, Loader2, Co
 import { fetchAPI } from '@/lib/api';
 import { useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
+import { useTestMode } from '@/contexts/TestModeContext';
 import ClaimsList from '@/components/ClaimsList';
 import ReasoningText, { ClassifiedInput } from '@/components/ReasoningText';
 
@@ -60,6 +62,7 @@ function VerifyContent() {
     const [error, setError] = useState('');
     const [showJson, setShowJson] = useState(false);
     const { user } = useUser();
+    const { testMode } = useTestMode();
     const searchParams = useSearchParams();
 
     const [hasAutoVerified, setHasAutoVerified] = useState(false);
@@ -130,7 +133,7 @@ function VerifyContent() {
         const typeToUse = typeOverride || inputType;
         if (!textToVerify?.trim()) return;
 
-        console.log('[RedditAutoVerify] Starting verification:', { type: typeToUse, content: textToVerify.substring(0, 100) + '...' });
+        console.log('[RedditAutoVerify] Starting verification:', { type: typeToUse, testMode, content: textToVerify.substring(0, 100) + '...' });
 
         setLoading(true);
         setError('');
@@ -148,9 +151,10 @@ function VerifyContent() {
                 user_email: user?.primaryEmailAddress?.emailAddress || 'user0@gmail.com',
                 reddit_id: redditId,
                 subreddit: subreddit,
-                author: author
+                author: author,
+                test_mode: testMode  // Pass test mode from frontend toggle (default: true)
             };
-            console.log('[RedditAutoVerify] API payload:', payload);
+            console.log('[RedditAutoVerify] API payload:', { ...payload, content: payload.content.substring(0, 100) + '...' });
 
             const data = await fetchAPI('/api/verify', {
                 method: 'POST',
