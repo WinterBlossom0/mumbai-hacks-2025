@@ -76,7 +76,6 @@ export default function Navbar() {
                             <div className="flex items-center cursor-hover">
                                 {isSignedIn ? (
                                     <UserButton
-                                        afterSignOutUrl="/"
                                         appearance={{
                                             elements: {
                                                 avatarBox: "w-9 h-9 border-2 border-white/10 hover:border-cyan-400 transition-colors"
