@@ -9,8 +9,14 @@ IMPACT TRACE:
     /api/public-feed, /api/top-headlines         → api/routers/public.py
     /api/reddit-posts, /api/reddit-community,
     /api/community-archives                      → api/routers/reddit.py
-  Startup: launches RedditMonitor in a daemon thread
+  Startup: launches RedditMonitor + AutoPing daemon threads
   If changed: server startup, CORS, or router prefixes affect all API consumers.
+
+  STARTUP SERVICES:
+    • RedditMonitor (daemon) → auto-processes Reddit posts from r/eyeoftruth
+    • AutoPing (daemon)    → pings Render URLs every 10 min to prevent sleep
+      - Pings: https://voidtruth.onrender.com/api/health
+      - Pings: https://voidtruth-frontend.onrender.com
 """
 import sys
 import threading
@@ -54,8 +60,20 @@ async def startup_event():
     from config import settings
     mode = "TEST (gpt-5.4-mini everywhere, Tavily max_results=1, max 2 URLs)" if settings.TEST_MODE else "PRODUCTION (full models)"
     print(f"[Config] Mode: {mode}")
+    
+    # Start Reddit monitor
     thread = threading.Thread(target=_run_reddit_monitor, daemon=True)
     thread.start()
+    
+    # Start auto-ping to keep Render free tier services awake
+    # Only runs in production (Render), not locally
+    import os
+    if os.getenv('RENDER', '0') == '1' or os.getenv('ENVIRONMENT') == 'production':
+        from utils.auto_ping import start_auto_ping
+        start_auto_ping(interval_minutes=10)
+        print("[AutoPing] Enabled for production (Render)")
+    else:
+        print("[AutoPing] Skipped (not production)")
 
 
 @app.get("/")
